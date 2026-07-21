@@ -1,0 +1,409 @@
+:root {
+  color: #203032;
+  background: #f5f7f4;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  background: #2f6f73;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button:hover,
+button:focus-visible {
+  background: #25595c;
+  outline: 3px solid #f8c660;
+  outline-offset: 2px;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem clamp(1rem, 4vw, 3rem);
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #d8ded9;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0;
+  color: #203032;
+  background: transparent;
+  text-align: left;
+}
+
+.brand:hover,
+.brand:focus-visible {
+  color: #203032;
+  background: transparent;
+}
+
+.brand small {
+  display: block;
+  color: #5d6c6d;
+  font-weight: 500;
+}
+
+.brand-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: #f8c660;
+  color: #173538;
+  font-weight: 900;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: center;
+}
+
+nav button,
+.outline-button,
+.secondary,
+.tabs button {
+  background: transparent;
+  color: #2f6f73;
+  border: 1px solid #9db9ba;
+}
+
+nav button {
+  min-height: 36px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.94rem;
+}
+
+nav button.active,
+.tabs button.active {
+  color: #fff;
+  background: #2f6f73;
+  border-color: #2f6f73;
+}
+
+main {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.hero,
+.content-panel {
+  border: 1px solid #d8ded9;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(30, 48, 49, 0.08);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: 2rem;
+  align-items: stretch;
+  padding: clamp(1.3rem, 4vw, 3rem);
+}
+
+.hero h1,
+.content-panel h1 {
+  margin: 0.25rem 0 1rem;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1.05;
+  color: #173538;
+}
+
+.content-panel h1 {
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+}
+
+.hero p,
+.content-panel p {
+  color: #506062;
+  line-height: 1.65;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #9a4d2f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.urgent-box {
+  padding: 1.25rem;
+  border: 2px solid #f8c660;
+  border-radius: 8px;
+  background: #fff8e1;
+}
+
+.urgent-box h2,
+.info-card h2,
+.resource-card h2 {
+  margin-top: 0;
+  color: #173538;
+}
+
+.section-grid,
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.info-card,
+.resource-card,
+.form-card,
+.rating-summary,
+.review-list article {
+  padding: 1.1rem;
+  border: 1px solid #d8ded9;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.resource-card span {
+  color: #74613b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.content-panel {
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.two-column,
+.account-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  gap: 2rem;
+}
+
+.account-layout {
+  grid-template-columns: minmax(0, 0.8fr) minmax(280px, 0.3fr) minmax(300px, 420px);
+  align-items: start;
+}
+
+.section-heading {
+  display: flex;
+  gap: 1rem;
+  align-items: start;
+  justify-content: space-between;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+  color: #203032;
+  font-weight: 700;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #a9b6b7;
+  border-radius: 8px;
+  padding: 0.72rem 0.8rem;
+  color: #203032;
+  background: #fff;
+}
+
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 3px solid #f8c660;
+  border-color: #2f6f73;
+}
+
+.form-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.message {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.message.error {
+  color: #7a1e1e;
+  background: #ffe2e2;
+}
+
+.message.success {
+  color: #174d25;
+  background: #ddf3df;
+}
+
+.tabs {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rating-summary {
+  display: grid;
+  gap: 0.25rem;
+  width: max-content;
+  min-width: 170px;
+  margin-bottom: 1rem;
+}
+
+.rating-summary strong {
+  font-size: 2rem;
+  color: #173538;
+}
+
+.review-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.review-list p {
+  margin: 0.4rem 0;
+}
+
+.responsive-table {
+  width: 100%;
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+caption {
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 800;
+}
+
+th,
+td {
+  padding: 0.9rem;
+  border: 1px solid #d8ded9;
+  text-align: left;
+}
+
+th {
+  color: #173538;
+  background: #e8f5e9;
+}
+
+.site-footer {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto 2rem;
+  padding: 1rem 0;
+  color: #5d6c6d;
+  font-size: 0.9rem;
+}
+
+.site-footer p {
+  margin: 0.25rem 0;
+}
+
+@media (max-width: 920px) {
+  .site-header,
+  .hero,
+  .two-column,
+  .account-layout,
+  .section-heading {
+    grid-template-columns: 1fr;
+  }
+
+  .site-header {
+    position: static;
+  }
+
+  nav {
+    justify-content: start;
+  }
+
+  .section-grid,
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  main {
+    width: min(100% - 1rem, 1180px);
+    padding-top: 1rem;
+  }
+
+  .hero h1,
+  .content-panel h1 {
+    font-size: 2rem;
+  }
+
+  .site-header {
+    padding: 0.75rem;
+  }
+
+  nav button,
+  .outline-button,
+  button {
+    width: 100%;
+  }
+}
