@@ -4,20 +4,20 @@ import ResourceCard from '../components/ResourceCard.vue'
 defineProps({
   categories: {
     type: Array,
-    required: true
+    required: true,
   },
   filteredResources: {
     type: Array,
-    required: true
+    required: true,
   },
   resourceFilter: {
     type: String,
-    required: true
+    required: true,
   },
   savedResourceIds: {
     type: Array,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['updateFilter', 'saveResource'])
@@ -27,11 +27,12 @@ defineEmits(['updateFilter', 'saveResource'])
   <section class="content-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">Dynamic data</p>
-        <h1>Resource Library</h1>
+        <p class="eyebrow">📚 Resource library</p>
+        <h1>Resources</h1>
+        <p>Short, practical guides written with young people in mind.</p>
       </div>
       <label>
-        Filter category
+        Filter by category
         <select :value="resourceFilter" @change="$emit('updateFilter', $event.target.value)">
           <option v-for="category in categories" :key="category">{{ category }}</option>
         </select>

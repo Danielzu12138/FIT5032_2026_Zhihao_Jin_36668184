@@ -4,12 +4,12 @@ import StatCard from '../components/StatCard.vue'
 defineProps({
   stats: {
     type: Object,
-    required: true
+    required: true,
   },
   bookings: {
     type: Array,
-    required: true
-  }
+    required: true,
+  },
 })
 
 defineEmits(['exportBookings'])
@@ -19,23 +19,25 @@ defineEmits(['exportBookings'])
   <section class="content-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">Admin role</p>
+        <p class="eyebrow">🔐 Admin dashboard</p>
         <h1>Admin Dashboard</h1>
-        <p>Manage users, bookings, feedback and reports.</p>
+        <p>Manage users, bookings, feedback and reports from one place.</p>
       </div>
-      <button type="button" @click="$emit('exportBookings')">Export bookings CSV</button>
+      <button type="button" @click="$emit('exportBookings')">📥 Export bookings CSV</button>
     </div>
 
     <div class="section-grid">
-      <StatCard title="Total Users" :value="stats.totalUsers" />
-      <StatCard title="Young Users" :value="stats.youngUsers" />
-      <StatCard title="Admins" :value="stats.admins" />
-      <StatCard title="Bookings" :value="stats.bookings" />
+      <StatCard title="👥 Total Users" :value="stats.totalUsers" />
+      <StatCard title="🧑 Young Users" :value="stats.youngUsers" />
+      <StatCard title="🛡️ Admins" :value="stats.admins" />
+      <StatCard title="📅 Bookings" :value="stats.bookings" />
     </div>
 
     <div class="responsive-table">
       <table>
-        <caption>All booking requests</caption>
+        <caption>
+          All booking requests
+        </caption>
         <thead>
           <tr>
             <th>Name</th>

@@ -4,20 +4,20 @@ import BookingForm from '../components/BookingForm.vue'
 defineProps({
   services: {
     type: Array,
-    required: true
+    required: true,
   },
   bookingForm: {
     type: Object,
-    required: true
+    required: true,
   },
   error: {
     type: String,
-    default: ''
+    default: '',
   },
   success: {
     type: String,
-    default: ''
-  }
+    default: '',
+  },
 })
 
 defineEmits(['createBooking'])
@@ -26,11 +26,12 @@ defineEmits(['createBooking'])
 <template>
   <section class="content-panel two-column">
     <div>
-      <p class="eyebrow">Online support</p>
+      <p class="eyebrow">📅 Online support</p>
       <h1>Book a support session</h1>
       <p>
-        Bookings are stored dynamically in localStorage. Young users can review their own
-        bookings from the dashboard, while admins can view all requests.
+        Choose a service that fits what you're going through, pick a date and time, and we'll take
+        it from there. Your bookings are saved securely and you can view them anytime from your
+        dashboard.
       </p>
     </div>
 

@@ -2,20 +2,20 @@
 defineProps({
   services: {
     type: Array,
-    required: true
+    required: true,
   },
   form: {
     type: Object,
-    required: true
+    required: true,
   },
   error: {
     type: String,
-    default: ''
+    default: '',
   },
   success: {
     type: String,
-    default: ''
-  }
+    default: '',
+  },
 })
 
 defineEmits(['submit'])
@@ -23,6 +23,7 @@ defineEmits(['submit'])
 
 <template>
   <form class="form-card" @submit.prevent="$emit('submit')">
+    <h3 style="margin: 0 0 0.25rem; font-size: 1.05rem">Request a session</h3>
     <label>
       Service
       <select v-model="form.service">
@@ -30,16 +31,20 @@ defineEmits(['submit'])
       </select>
     </label>
     <label>
-      Date
+      Preferred date
       <input v-model="form.date" type="date" />
     </label>
     <label>
-      Time
+      Preferred time
       <input v-model="form.time" type="time" />
     </label>
     <label>
-      Notes
-      <textarea v-model="form.notes" maxlength="160" placeholder="Optional, max 160 characters"></textarea>
+      Notes <span style="font-weight: 400; color: var(--color-text-muted)">(optional)</span>
+      <textarea
+        v-model="form.notes"
+        maxlength="160"
+        placeholder="Anything we should know? Max 160 characters."
+      ></textarea>
     </label>
     <p v-if="error" class="message error">{{ error }}</p>
     <p v-if="success" class="message success">{{ success }}</p>

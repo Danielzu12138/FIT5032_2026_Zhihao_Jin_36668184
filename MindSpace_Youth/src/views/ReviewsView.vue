@@ -4,28 +4,28 @@ import RatingForm from '../components/RatingForm.vue'
 defineProps({
   services: {
     type: Array,
-    required: true
+    required: true,
   },
   ratingForm: {
     type: Object,
-    required: true
+    required: true,
   },
   ratings: {
     type: Array,
-    required: true
+    required: true,
   },
   averageRating: {
     type: String,
-    required: true
+    required: true,
   },
   error: {
     type: String,
-    default: ''
+    default: '',
   },
   success: {
     type: String,
-    default: ''
-  }
+    default: '',
+  },
 })
 
 defineEmits(['submitRating'])
@@ -34,18 +34,18 @@ defineEmits(['submitRating'])
 <template>
   <section class="content-panel two-column">
     <div>
-      <p class="eyebrow">Aggregated rating</p>
+      <p class="eyebrow">⭐ Reviews & feedback</p>
       <h1>Reviews & Ratings</h1>
       <div class="rating-summary">
         <strong>{{ averageRating }}</strong>
-        <span>{{ ratings.length }} total reviews</span>
+        <span>{{ ratings.length }} {{ ratings.length === 1 ? 'review' : 'total reviews' }}</span>
       </div>
 
       <div class="review-list">
         <article v-for="(rating, index) in ratings" :key="index">
-          <strong>{{ rating.service }} - {{ rating.score }}/5</strong>
+          <strong>{{ rating.service }} — {{ rating.score }}/5</strong>
           <p>{{ rating.comment || 'No written comment.' }}</p>
-          <small>By {{ rating.user }}</small>
+          <small>— {{ rating.user }}</small>
         </article>
       </div>
     </div>

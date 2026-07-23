@@ -2,24 +2,24 @@
 defineProps({
   authMode: {
     type: String,
-    required: true
+    required: true,
   },
   loginForm: {
     type: Object,
-    required: true
+    required: true,
   },
   registerForm: {
     type: Object,
-    required: true
+    required: true,
   },
   error: {
     type: String,
-    default: ''
+    default: '',
   },
   success: {
     type: String,
-    default: ''
-  }
+    default: '',
+  },
 })
 
 defineEmits(['setMode', 'login', 'register'])
@@ -28,17 +28,27 @@ defineEmits(['setMode', 'login', 'register'])
 <template>
   <section class="content-panel account-layout">
     <div>
-      <p class="eyebrow">Authentication</p>
+      <p class="eyebrow">🔐 Authentication</p>
       <h1>Login or register</h1>
-      <p>Demo young user: user@mindspace.test / Password123</p>
-      <p>Demo admin: admin@mindspace.test / Admin12345</p>
+      <p>
+        Create an account to book support sessions, save resources, and share your feedback. Already
+        registered? Log in below.
+      </p>
     </div>
 
     <div class="tabs" role="tablist" aria-label="Authentication mode">
-      <button :class="{ active: authMode === 'login' }" type="button" @click="$emit('setMode', 'login')">
+      <button
+        :class="{ active: authMode === 'login' }"
+        type="button"
+        @click="$emit('setMode', 'login')"
+      >
         Login
       </button>
-      <button :class="{ active: authMode === 'register' }" type="button" @click="$emit('setMode', 'register')">
+      <button
+        :class="{ active: authMode === 'register' }"
+        type="button"
+        @click="$emit('setMode', 'register')"
+      >
         Register
       </button>
     </div>

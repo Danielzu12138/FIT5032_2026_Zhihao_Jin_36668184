@@ -4,20 +4,20 @@ import StatCard from '../components/StatCard.vue'
 defineProps({
   currentUser: {
     type: Object,
-    required: true
+    required: true,
   },
   userBookings: {
     type: Array,
-    required: true
+    required: true,
   },
   savedResources: {
     type: Array,
-    required: true
+    required: true,
   },
   averageRating: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 </script>
 
@@ -25,21 +25,26 @@ defineProps({
   <section class="content-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">Young user role</p>
+        <p class="eyebrow">👤 Young user dashboard</p>
         <h1>My Dashboard</h1>
-        <p>Welcome, {{ currentUser.name }}. This page only displays your own activity.</p>
+        <p>
+          Welcome back, <strong>{{ currentUser.name }}</strong
+          >. Here's your personal activity summary.
+        </p>
       </div>
     </div>
 
     <div class="section-grid">
-      <StatCard title="My Bookings" :value="userBookings.length + ' booking request(s)'" />
-      <StatCard title="Saved Resources" :value="savedResources.length + ' saved guide(s)'" />
-      <StatCard title="Average Rating" :value="averageRating" />
+      <StatCard title="📅 My Bookings" :value="userBookings.length + ' booking request(s)'" />
+      <StatCard title="📚 Saved Resources" :value="savedResources.length + ' saved guide(s)'" />
+      <StatCard title="⭐ Average Rating" :value="averageRating" />
     </div>
 
     <div class="responsive-table">
       <table>
-        <caption>Your bookings</caption>
+        <caption>
+          Your support session bookings
+        </caption>
         <thead>
           <tr>
             <th>Service</th>
