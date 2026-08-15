@@ -21,7 +21,6 @@ import {
   addRating,
   fetchSavedResourceIds,
   toggleSavedResource,
-  seedFirestore,
 } from './utils/storage'
 import { isFutureDateTime, isValidEmail, sanitizeInput } from './utils/validation'
 import AdminDashboardView from './views/AdminDashboardView.vue'
@@ -61,7 +60,6 @@ const registerForm = reactive({
   email: '',
   password: '',
   confirmPassword: '',
-  role: 'young_user',
 })
 
 const bookingForm = reactive({
@@ -97,7 +95,7 @@ const filteredResources = computed(() =>
 )
 
 const userBookings = computed(() =>
-  state.bookings.filter((booking) => booking.email === state.currentUser?.email),
+  state.bookings.filter((booking) => booking.uid === state.currentUser?.uid),
 )
 
 const averageRating = computed(() => {
@@ -137,8 +135,12 @@ async function loadUserData(uid) {
     return
   }
 
+  const bookingsRequest = state.currentUser.role === 'admin'
+    ? fetchAllBookings()
+    : fetchUserBookings(uid)
+
   const [bookingsResult, ratingsResult, savedResult] = await Promise.all([
-    fetchAllBookings(),
+    bookingsRequest,
     fetchAllRatings(),
     fetchSavedResourceIds(uid),
   ])
@@ -159,12 +161,6 @@ async function loadApp() {
     }
   }, 2000)
 
-  try {
-    await seedFirestore()
-  } catch (e) {
-    console.warn('Seed skipped:', e.message)
-  }
-
   authUnsubscribe = onAuthChange(async (firebaseUser) => {
     clearTimeout(safetyTimer)
     if (firebaseUser) {
@@ -184,7 +180,8 @@ async function loadApp() {
       registerForm.email = ''
       registerForm.password = ''
       registerForm.confirmPassword = ''
-      registerForm.role = 'young_user'
+      const ratingsResult = await fetchAllRatings()
+      if (ratingsResult.success) state.ratings = ratingsResult.ratings
       authError.value = ''
       authSuccess.value = ''
     }
@@ -206,7 +203,6 @@ function clearAllForms() {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  registerForm.role = 'young_user'
   bookingForm.service = supportServices[0]
   bookingForm.date = ''
   bookingForm.time = ''
@@ -244,7 +240,6 @@ function switchAuthMode(mode) {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  registerForm.role = 'young_user'
   authError.value = ''
   authSuccess.value = ''
 }
@@ -269,7 +264,7 @@ async function refreshAdminData() {
 async function refreshUserData() {
   if (!state.currentUser) return
   const [bookingsResult, savedResult] = await Promise.all([
-    fetchUserBookings(state.currentUser.email),
+    fetchUserBookings(state.currentUser.uid),
     fetchSavedResourceIds(state.currentUser.uid),
   ])
   if (bookingsResult.success) state.bookings = bookingsResult.bookings
@@ -302,7 +297,7 @@ async function register() {
     return
   }
 
-  const result = await registerUser(email, password, name, registerForm.role)
+  const result = await registerUser(email, password, name)
   if (result.success) {
     authSuccess.value = 'Account created successfully.'
     // Clear register form after successful registration
@@ -310,7 +305,6 @@ async function register() {
     registerForm.email = ''
     registerForm.password = ''
     registerForm.confirmPassword = ''
-    registerForm.role = 'young_user'
   } else {
     authError.value = result.error
   }
@@ -364,7 +358,6 @@ async function logout() {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  registerForm.role = 'young_user'
 }
 
 async function saveResource(resourceId) {
@@ -404,6 +397,7 @@ async function createBooking() {
   }
 
   const result = await addBooking({
+    uid: state.currentUser.uid,
     email: state.currentUser.email,
     name: state.currentUser.name,
     service: bookingForm.service,
@@ -416,7 +410,7 @@ async function createBooking() {
   if (result.success) {
     bookingSuccess.value = 'Booking request submitted successfully.'
     bookingForm.notes = ''
-    const bookingsResult = await fetchAllBookings()
+    const bookingsResult = await fetchUserBookings(state.currentUser.uid)
     if (bookingsResult.success) state.bookings = bookingsResult.bookings
   } else {
     bookingError.value = result.error
@@ -440,6 +434,7 @@ async function submitRating() {
   }
 
   const result = await addRating({
+    uid: state.currentUser.uid,
     service: ratingForm.service,
     score,
     comment: sanitizeInput(ratingForm.comment, 180),

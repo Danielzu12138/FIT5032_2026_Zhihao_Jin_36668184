@@ -84,13 +84,6 @@ defineEmits(['setMode', 'login', 'register'])
         Confirm password
         <input v-model="registerForm.confirmPassword" type="password" autocomplete="new-password" />
       </label>
-      <label>
-        Role
-        <select v-model="registerForm.role">
-          <option value="young_user">Young user</option>
-          <option value="admin">Admin staff</option>
-        </select>
-      </label>
       <p v-if="error" class="message error">{{ error }}</p>
       <p v-if="success" class="message success">{{ success }}</p>
       <button type="submit">Create account</button>

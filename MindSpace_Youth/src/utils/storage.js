@@ -16,19 +16,19 @@ export async function fetchAllBookings() {
     snapshot.forEach((docSnap) => bookings.push({ id: docSnap.id, ...docSnap.data() }))
     return { success: true, bookings }
   } catch {
-    return { success: true, bookings: [] }
+    return { success: false, bookings: [], error: 'Failed to load bookings.' }
   }
 }
 
-export async function fetchUserBookings(email) {
+export async function fetchUserBookings(uid) {
   try {
-    const q = query(collection(db, COLLECTIONS.bookings), where('email', '==', email))
+    const q = query(collection(db, COLLECTIONS.bookings), where('uid', '==', uid))
     const snapshot = await getDocs(q)
     const bookings = []
     snapshot.forEach((docSnap) => bookings.push({ id: docSnap.id, ...docSnap.data() }))
     return { success: true, bookings }
   } catch {
-    return { success: true, bookings: [] }
+    return { success: false, bookings: [], error: 'Failed to load your bookings.' }
   }
 }
 
@@ -53,7 +53,7 @@ export async function fetchAllRatings() {
     snapshot.forEach((docSnap) => ratings.push({ id: docSnap.id, ...docSnap.data() }))
     return { success: true, ratings }
   } catch {
-    return { success: true, ratings: [] }
+    return { success: false, ratings: [], error: 'Failed to load ratings.' }
   }
 }
 
@@ -79,7 +79,7 @@ export async function fetchSavedResourceIds(uid) {
     snapshot.forEach((docSnap) => ids.push(docSnap.data().resourceId))
     return { success: true, ids }
   } catch {
-    return { success: true, ids: [] }
+    return { success: false, ids: [], error: 'Failed to load saved resources.' }
   }
 }
 
@@ -109,32 +109,5 @@ export async function toggleSavedResource(uid, resourceId) {
     }
   } catch {
     return { success: false, error: 'Failed to update saved resources.' }
-  }
-}
-
-// ---- Seed data (Firestore) ---- //
-
-export async function seedFirestore() {
-  try {
-    // Check if seed data already exists
-    const ratingsSnapshot = await getDocs(collection(db, COLLECTIONS.ratings))
-    if (ratingsSnapshot.empty) {
-      await addDoc(collection(db, COLLECTIONS.ratings), {
-        service: 'Online wellbeing check-in',
-        score: 5,
-        comment: 'The booking process felt private and simple.',
-        user: 'Demo Young User',
-        createdAt: new Date().toISOString(),
-      })
-      await addDoc(collection(db, COLLECTIONS.ratings), {
-        service: 'Study stress support',
-        score: 4,
-        comment: 'Clear advice and easy language.',
-        user: 'Anonymous user',
-        createdAt: new Date().toISOString(),
-      })
-    }
-  } catch (error) {
-    console.warn('Seeding skipped:', error.message)
   }
 }

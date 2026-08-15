@@ -16,7 +16,7 @@ import {
  * Register a new user with Firebase Auth and store profile in Firestore.
  * Returns { success, error, user }
  */
-export async function registerUser(email, password, name, role) {
+export async function registerUser(email, password, name) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
     const firebaseUser = userCredential.user
@@ -25,7 +25,9 @@ export async function registerUser(email, password, name, role) {
     await setDoc(doc(db, 'users', firebaseUser.uid), {
       name,
       email: email.toLowerCase(),
-      role,
+      // Public registration can only create a standard young-user account.
+      // Admin access is assigned separately by a trusted Firebase administrator.
+      role: 'young_user',
       uid: firebaseUser.uid,
       createdAt: new Date().toISOString(),
     })
