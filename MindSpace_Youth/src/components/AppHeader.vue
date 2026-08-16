@@ -33,6 +33,7 @@ defineEmits(['navigate', 'logout'])
         :key="page.id"
         type="button"
         :class="{ active: currentPage === page.id }"
+        :aria-current="currentPage === page.id ? 'page' : undefined"
         @click="$emit('navigate', page.id)"
       >
         {{ page.label }}

@@ -1,6 +1,7 @@
 export const pages = [
   { id: 'home', label: 'Home', public: true },
   { id: 'resources', label: 'Resources', public: true },
+  { id: 'find-support', label: 'Find Support', public: true },
   { id: 'support', label: 'Online Support', public: true },
   { id: 'reviews', label: 'Reviews', public: true },
   { id: 'account', label: 'Login', public: true, hideWhenLoggedIn: true },

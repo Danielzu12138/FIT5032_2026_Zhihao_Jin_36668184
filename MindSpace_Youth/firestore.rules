@@ -4,7 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null &&
+        request.auth.token.email_verified == true;
     }
 
     // Admin status is read from a protected Firestore profile. A public client
@@ -18,7 +19,8 @@ service cloud.firestore {
       allow read: if signedIn() &&
         (request.auth.uid == userId || isAdmin());
 
-      allow create: if signedIn() &&
+      // Registration must create the profile before the email can be verified.
+      allow create: if request.auth != null &&
         request.auth.uid == userId &&
         request.resource.data.uid == request.auth.uid &&
         request.resource.data.role == 'young_user';

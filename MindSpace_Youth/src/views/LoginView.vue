@@ -1,5 +1,9 @@
 <script setup>
-defineProps({
+import { ref, watch } from 'vue'
+
+const showResetForm = ref(false)
+
+const props = defineProps({
   authMode: {
     type: String,
     required: true,
@@ -20,9 +24,20 @@ defineProps({
     type: String,
     default: '',
   },
+  verificationRequired: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-defineEmits(['setMode', 'login', 'register'])
+defineEmits(['setMode', 'login', 'register', 'resetPassword', 'resendVerification'])
+
+watch(
+  () => props.authMode,
+  () => {
+    showResetForm.value = false
+  },
+)
 </script>
 
 <template>
@@ -40,6 +55,8 @@ defineEmits(['setMode', 'login', 'register'])
       <button
         :class="{ active: authMode === 'login' }"
         type="button"
+        role="tab"
+        :aria-selected="authMode === 'login'"
         @click="$emit('setMode', 'login')"
       >
         Login
@@ -47,45 +64,99 @@ defineEmits(['setMode', 'login', 'register'])
       <button
         :class="{ active: authMode === 'register' }"
         type="button"
+        role="tab"
+        :aria-selected="authMode === 'register'"
         @click="$emit('setMode', 'register')"
       >
         Register
       </button>
     </div>
 
-    <form v-if="authMode === 'login'" class="form-card" @submit.prevent="$emit('login')">
-      <label>
+    <form
+      v-if="authMode === 'login' && showResetForm"
+      class="form-card"
+      @submit.prevent="$emit('resetPassword')"
+    >
+      <h2>Reset your password</h2>
+      <p>Enter your account email and we will send a password reset link.</p>
+      <label for="reset-email">
         Email
-        <input v-model="loginForm.email" type="email" autocomplete="email" />
+        <input id="reset-email" v-model="loginForm.email" type="email" autocomplete="email" required />
       </label>
-      <label>
+      <p v-if="error" class="message error" role="alert">{{ error }}</p>
+      <p v-if="success" class="message success" role="status">{{ success }}</p>
+      <button type="submit">Send reset email</button>
+      <button class="secondary" type="button" @click="showResetForm = false">Back to login</button>
+    </form>
+
+    <form v-else-if="authMode === 'login'" class="form-card" @submit.prevent="$emit('login')">
+      <label for="login-email">
+        Email
+        <input id="login-email" v-model="loginForm.email" type="email" autocomplete="email" required />
+      </label>
+      <label for="login-password">
         Password
-        <input v-model="loginForm.password" type="password" autocomplete="current-password" />
+        <input
+          id="login-password"
+          v-model="loginForm.password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
       </label>
-      <p v-if="error" class="message error">{{ error }}</p>
-      <p v-if="success" class="message success">{{ success }}</p>
+      <p v-if="error" class="message error" role="alert">{{ error }}</p>
+      <p v-if="success" class="message success" role="status">{{ success }}</p>
       <button type="submit">Login</button>
+      <button class="secondary" type="button" @click="showResetForm = true">Forgot password?</button>
+      <button
+        v-if="verificationRequired"
+        class="secondary"
+        type="button"
+        @click="$emit('resendVerification')"
+      >
+        Resend verification email
+      </button>
     </form>
 
     <form v-else class="form-card" @submit.prevent="$emit('register')">
-      <label>
+      <label for="register-name">
         Full name
-        <input v-model="registerForm.name" type="text" maxlength="60" />
+        <input id="register-name" v-model="registerForm.name" type="text" maxlength="60" required />
       </label>
-      <label>
+      <label for="register-email">
         Email
-        <input v-model="registerForm.email" type="email" autocomplete="email" />
+        <input
+          id="register-email"
+          v-model="registerForm.email"
+          type="email"
+          autocomplete="email"
+          required
+        />
       </label>
-      <label>
+      <label for="register-password">
         Password
-        <input v-model="registerForm.password" type="password" autocomplete="new-password" />
+        <input
+          id="register-password"
+          v-model="registerForm.password"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        />
       </label>
-      <label>
+      <label for="register-confirm-password">
         Confirm password
-        <input v-model="registerForm.confirmPassword" type="password" autocomplete="new-password" />
+        <input
+          id="register-confirm-password"
+          v-model="registerForm.confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          required
+        />
       </label>
-      <p v-if="error" class="message error">{{ error }}</p>
-      <p v-if="success" class="message success">{{ success }}</p>
+      <p v-if="error" class="message error" role="alert">{{ error }}</p>
+      <p v-if="success" class="message success" role="status">{{ success }}</p>
       <button type="submit">Create account</button>
     </form>
   </section>

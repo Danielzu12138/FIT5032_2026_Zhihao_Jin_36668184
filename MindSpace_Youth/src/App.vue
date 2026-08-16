@@ -1,13 +1,16 @@
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import AppFooter from './components/AppFooter.vue'
 import AppHeader from './components/AppHeader.vue'
+import OnlineStatus from './components/OnlineStatus.vue'
 import { resources } from './data/resources'
 import { supportServices } from './data/services'
 import { canAccess, getVisiblePages, pages } from './router'
 import {
   registerUser,
   loginUser,
+  resetPassword,
+  resendVerificationEmail,
   logoutUser,
   fetchUserProfile,
   fetchAllUsers,
@@ -23,29 +26,39 @@ import {
   toggleSavedResource,
 } from './utils/storage'
 import { isFutureDateTime, isValidEmail, sanitizeInput } from './utils/validation'
-import AdminDashboardView from './views/AdminDashboardView.vue'
+import { checkBookingOnServer, encodeBase64, sendEmailWithAttachment } from './utils/api'
 import DeniedView from './views/DeniedView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
 import ResourcesView from './views/ResourcesView.vue'
 import ReviewsView from './views/ReviewsView.vue'
-import SupportView from './views/SupportView.vue'
 import UserDashboardView from './views/UserDashboardView.vue'
+
+const AdminDashboardView = defineAsyncComponent(() => import('./views/AdminDashboardView.vue'))
+const SupportMapView = defineAsyncComponent(() => import('./views/SupportMapView.vue'))
+const SupportView = defineAsyncComponent(() => import('./views/SupportView.vue'))
 
 const state = reactive({
   page: 'home',
   currentUser: null,
+  users: [],
   bookings: [],
   ratings: [],
   savedResourceIds: [],
   loading: true,
 })
 
+const BOOKING_DRAFT_KEY = 'mindspace-youth-booking-draft'
+
 const authMode = ref('login')
 const authError = ref('')
 const authSuccess = ref('')
+const authNeedsVerification = ref(false)
 const bookingError = ref('')
 const bookingSuccess = ref('')
+const adminEmailError = ref('')
+const adminEmailSuccess = ref('')
+const adminEmailSending = ref(false)
 const ratingError = ref('')
 const ratingSuccess = ref('')
 const resourceFilter = ref('All')
@@ -68,6 +81,52 @@ const bookingForm = reactive({
   time: '',
   notes: '',
 })
+
+function inputDateValue(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const minBookingDate = inputDateValue()
+
+function restoreBookingDraft() {
+  try {
+    const savedDraft = JSON.parse(localStorage.getItem(BOOKING_DRAFT_KEY) || 'null')
+    if (!savedDraft) return
+    if (supportServices.includes(savedDraft.service)) bookingForm.service = savedDraft.service
+    bookingForm.date = String(savedDraft.date || '').slice(0, 10)
+    bookingForm.time = String(savedDraft.time || '').slice(0, 5)
+    bookingForm.notes = sanitizeInput(savedDraft.notes, 160)
+  } catch {
+    localStorage.removeItem(BOOKING_DRAFT_KEY)
+  }
+}
+
+watch(
+  bookingForm,
+  (draft) => {
+    try {
+      if (draft.date || draft.time || draft.notes) {
+        localStorage.setItem(
+          BOOKING_DRAFT_KEY,
+          JSON.stringify({
+            service: draft.service,
+            date: draft.date,
+            time: draft.time,
+            notes: draft.notes,
+          }),
+        )
+      } else {
+        localStorage.removeItem(BOOKING_DRAFT_KEY)
+      }
+    } catch {
+      // Local storage may be unavailable in private browsing modes.
+    }
+  },
+  { deep: true },
+)
 
 const ratingForm = reactive({
   service: supportServices[0],
@@ -121,6 +180,7 @@ let authUnsubscribe = null
 async function loadUserData(uid) {
   if (!uid) {
     state.currentUser = null
+    state.users = []
     state.bookings = []
     state.ratings = []
     state.savedResourceIds = []
@@ -164,12 +224,23 @@ async function loadApp() {
   authUnsubscribe = onAuthChange(async (firebaseUser) => {
     clearTimeout(safetyTimer)
     if (firebaseUser) {
+      if (!firebaseUser.emailVerified) {
+        state.currentUser = null
+        state.page = 'account'
+        authMode.value = 'login'
+        authNeedsVerification.value = true
+        authError.value = 'Please verify your email address before signing in.'
+        state.loading = false
+        return
+      }
       await loadUserData(firebaseUser.uid)
+      if (state.currentUser?.role === 'admin') await refreshAdminData()
       if (state.currentUser && (state.page === 'home' || state.page === 'account')) {
         state.page = state.currentUser.role === 'admin' ? 'admin' : 'dashboard'
       }
     } else {
       state.currentUser = null
+      state.users = []
       state.bookings = []
       state.ratings = []
       state.savedResourceIds = []
@@ -192,8 +263,11 @@ async function loadApp() {
 function clearAllForms() {
   authError.value = ''
   authSuccess.value = ''
+  authNeedsVerification.value = false
   bookingError.value = ''
   bookingSuccess.value = ''
+  adminEmailError.value = ''
+  adminEmailSuccess.value = ''
   ratingError.value = ''
   ratingSuccess.value = ''
   resourceFilter.value = 'All'
@@ -203,10 +277,6 @@ function clearAllForms() {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  bookingForm.service = supportServices[0]
-  bookingForm.date = ''
-  bookingForm.time = ''
-  bookingForm.notes = ''
   ratingForm.service = supportServices[0]
   ratingForm.score = 5
   ratingForm.comment = ''
@@ -242,6 +312,7 @@ function switchAuthMode(mode) {
   registerForm.confirmPassword = ''
   authError.value = ''
   authSuccess.value = ''
+  authNeedsVerification.value = false
 }
 
 async function refreshAdminData() {
@@ -253,6 +324,7 @@ async function refreshAdminData() {
   if (bookingsResult.success) state.bookings = bookingsResult.bookings
   if (ratingsResult.success) state.ratings = ratingsResult.ratings
   if (usersResult.success) {
+    state.users = usersResult.users
     dashboardStats.totalUsers = usersResult.users.length
     dashboardStats.youngUsers = usersResult.users.filter((u) => u.role === 'young_user').length
     dashboardStats.admins = usersResult.users.filter((u) => u.role === 'admin').length
@@ -299,7 +371,9 @@ async function register() {
 
   const result = await registerUser(email, password, name)
   if (result.success) {
-    authSuccess.value = 'Account created successfully.'
+    authMode.value = 'login'
+    authSuccess.value = 'Account created. Check your real email and verify it before logging in.'
+    authNeedsVerification.value = false
     // Clear register form after successful registration
     registerForm.name = ''
     registerForm.email = ''
@@ -329,9 +403,50 @@ async function login() {
   const result = await loginUser(email, password)
   if (result.success) {
     authSuccess.value = 'Welcome back.'
+    authNeedsVerification.value = false
     // Clear login form after successful login
     loginForm.email = ''
     loginForm.password = ''
+  } else {
+    authError.value = result.error
+    authNeedsVerification.value = result.code === 'auth/email-not-verified'
+  }
+}
+
+async function resendVerification() {
+  authError.value = ''
+  authSuccess.value = ''
+
+  const email = sanitizeInput(loginForm.email, 80).toLowerCase()
+  const password = loginForm.password
+  if (!email || !password || !isValidEmail(email)) {
+    authError.value = 'Enter your email and password first.'
+    return
+  }
+
+  const result = await resendVerificationEmail(email, password)
+  if (result.success) {
+    authNeedsVerification.value = false
+    authSuccess.value = 'A new verification email has been sent. Check your inbox and spam folder.'
+    loginForm.password = ''
+  } else {
+    authError.value = result.error
+  }
+}
+
+async function requestPasswordReset() {
+  authError.value = ''
+  authSuccess.value = ''
+
+  const email = sanitizeInput(loginForm.email, 80).toLowerCase()
+  if (!email || !isValidEmail(email)) {
+    authError.value = 'Enter a valid email address first.'
+    return
+  }
+
+  const result = await resetPassword(email)
+  if (result.success) {
+    authSuccess.value = 'Password reset instructions have been sent to your email.'
   } else {
     authError.value = result.error
   }
@@ -340,6 +455,7 @@ async function login() {
 async function logout() {
   await logoutUser()
   state.currentUser = null
+  state.users = []
   state.page = 'home'
   state.bookings = []
   state.ratings = []
@@ -395,6 +511,32 @@ async function createBooking() {
     bookingError.value = 'Please choose a future date and time.'
     return
   }
+  const selectedDay = new Date(`${bookingForm.date}T12:00:00`).getDay()
+  if (selectedDay === 0 || selectedDay === 6 || bookingForm.time < '09:00' || bookingForm.time > '17:30') {
+    bookingError.value = 'Sessions are available Monday to Friday from 9:00 AM to 5:30 PM.'
+    return
+  }
+
+  const conflict = state.bookings.some(
+    (booking) =>
+      booking.date === bookingForm.date &&
+      booking.time === bookingForm.time &&
+      booking.status !== 'Cancelled',
+  )
+  if (conflict) {
+    bookingError.value = 'That time is already in your calendar. Please choose another slot.'
+    return
+  }
+
+  const serverValidation = await checkBookingOnServer({
+    service: bookingForm.service,
+    date: bookingForm.date,
+    time: bookingForm.time,
+  })
+  if (!serverValidation.success && !serverValidation.unavailable) {
+    bookingError.value = serverValidation.error || 'This booking could not be validated.'
+    return
+  }
 
   const result = await addBooking({
     uid: state.currentUser.uid,
@@ -409,12 +551,21 @@ async function createBooking() {
 
   if (result.success) {
     bookingSuccess.value = 'Booking request submitted successfully.'
+    bookingForm.date = ''
+    bookingForm.time = ''
     bookingForm.notes = ''
     const bookingsResult = await fetchUserBookings(state.currentUser.uid)
     if (bookingsResult.success) state.bookings = bookingsResult.bookings
   } else {
     bookingError.value = result.error
   }
+}
+
+function selectBookingSlot(slot) {
+  bookingForm.date = slot.date
+  if (slot.time) bookingForm.time = slot.time
+  bookingError.value = ''
+  bookingSuccess.value = ''
 }
 
 async function submitRating() {
@@ -452,16 +603,7 @@ async function submitRating() {
   }
 }
 
-function exportBookingsCsv() {
-  const header = ['Name', 'Email', 'Service', 'Date', 'Time', 'Status']
-  const rows = state.bookings.map((booking) => [
-    booking.name,
-    booking.email,
-    booking.service,
-    booking.date,
-    booking.time,
-    booking.status,
-  ])
+function downloadCsv(filename, header, rows) {
   const csv = [header, ...rows]
     .map((row) => row.map((value) => '"' + String(value).replaceAll('"', '""') + '"').join(','))
     .join('\n')
@@ -470,12 +612,77 @@ function exportBookingsCsv() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'mindspace-bookings.csv'
+  link.download = filename
   link.click()
   URL.revokeObjectURL(url)
 }
 
-onMounted(loadApp)
+function exportAdminData(type) {
+  if (type === 'users') {
+    downloadCsv(
+      'mindspace-users.csv',
+      ['Name', 'Email', 'Role', 'Created'],
+      state.users.map((user) => [user.name, user.email, user.role, user.createdAt]),
+    )
+    return
+  }
+
+  downloadCsv(
+    'mindspace-bookings.csv',
+    ['Name', 'Email', 'Service', 'Date', 'Time', 'Status'],
+    state.bookings.map((booking) => [
+      booking.name,
+      booking.email,
+      booking.service,
+      booking.date,
+      booking.time,
+      booking.status,
+    ]),
+  )
+}
+
+async function emailAdminSummary() {
+  adminEmailError.value = ''
+  adminEmailSuccess.value = ''
+  if (!isAdmin.value) {
+    adminEmailError.value = 'Administrator access is required.'
+    return
+  }
+
+  adminEmailSending.value = true
+  const summaryCsv = [
+    ['Metric', 'Value'],
+    ['Total users', dashboardStats.totalUsers],
+    ['Young users', dashboardStats.youngUsers],
+    ['Administrators', dashboardStats.admins],
+    ['Bookings', dashboardStats.bookings],
+    ['Ratings', dashboardStats.ratings],
+    ['Generated', new Date().toISOString()],
+  ]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
+    .join('\n')
+
+  const result = await sendEmailWithAttachment({
+    subject: 'MindSpace Youth activity summary',
+    text: 'Your privacy-preserving MindSpace Youth activity summary is attached.',
+    attachment: {
+      filename: 'mindspace-summary.csv',
+      content: encodeBase64(summaryCsv),
+    },
+  })
+
+  adminEmailSending.value = false
+  if (result.success) {
+    adminEmailSuccess.value = 'Summary email sent to your verified administrator email address.'
+  } else {
+    adminEmailError.value = result.error
+  }
+}
+
+onMounted(() => {
+  restoreBookingDraft()
+  loadApp()
+})
 onUnmounted(() => {
   if (authUnsubscribe) authUnsubscribe()
 })
@@ -483,8 +690,9 @@ onUnmounted(() => {
 
 <template>
   <div class="app-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
     <div v-if="state.loading" class="loading-screen">
-      <p>Loading MindSpace Youth…</p>
+      <p role="status">Loading MindSpace Youth…</p>
     </div>
 
     <template v-else>
@@ -495,8 +703,9 @@ onUnmounted(() => {
         @navigate="setPage"
         @logout="logout"
       />
+      <OnlineStatus />
 
-      <main>
+      <main id="main-content" tabindex="-1">
         <DeniedView v-if="state.page === 'denied' || !canViewCurrentPage" @navigate="setPage" />
 
         <HomeView v-else-if="state.page === 'home'" @navigate="setPage" />
@@ -511,13 +720,18 @@ onUnmounted(() => {
           @save-resource="saveResource"
         />
 
+        <SupportMapView v-else-if="state.page === 'find-support'" />
+
         <SupportView
           v-else-if="state.page === 'support'"
           :services="supportServices"
           :booking-form="bookingForm"
+          :bookings="userBookings"
+          :min-date="minBookingDate"
           :error="bookingError"
           :success="bookingSuccess"
           @create-booking="createBooking"
+          @select-slot="selectBookingSlot"
         />
 
         <ReviewsView
@@ -538,9 +752,12 @@ onUnmounted(() => {
           :register-form="registerForm"
           :error="authError"
           :success="authSuccess"
+          :verification-required="authNeedsVerification"
           @set-mode="switchAuthMode"
           @login="login"
           @register="register"
+          @reset-password="requestPasswordReset"
+          @resend-verification="resendVerification"
         />
 
         <UserDashboardView
@@ -555,7 +772,13 @@ onUnmounted(() => {
           v-else-if="state.page === 'admin' && isAdmin"
           :stats="dashboardStats"
           :bookings="state.bookings"
-          @export-bookings="exportBookingsCsv"
+          :users="state.users"
+          :ratings="state.ratings"
+          :email-error="adminEmailError"
+          :email-success="adminEmailSuccess"
+          :email-sending="adminEmailSending"
+          @export-data="exportAdminData"
+          @email-summary="emailAdminSummary"
         />
       </main>
 

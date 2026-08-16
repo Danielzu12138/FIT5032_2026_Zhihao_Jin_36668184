@@ -1,4 +1,5 @@
 <script setup>
+import BookingCalendar from '../components/BookingCalendar.vue'
 import BookingForm from '../components/BookingForm.vue'
 
 defineProps({
@@ -18,14 +19,23 @@ defineProps({
     type: String,
     default: '',
   },
+  bookings: {
+    type: Array,
+    required: true,
+  },
+  minDate: {
+    type: String,
+    required: true,
+  },
 })
 
-defineEmits(['createBooking'])
+defineEmits(['createBooking', 'selectSlot'])
 </script>
 
 <template>
-  <section class="content-panel two-column">
-    <div>
+  <section class="content-panel">
+    <div class="section-heading support-heading">
+      <div>
       <p class="eyebrow">📅 Online support</p>
       <h1>Book a support session</h1>
       <p>
@@ -33,14 +43,20 @@ defineEmits(['createBooking'])
         it from there. Your bookings are saved securely and you can view them anytime from your
         dashboard.
       </p>
+      </div>
     </div>
 
-    <BookingForm
-      :services="services"
-      :form="bookingForm"
-      :error="error"
-      :success="success"
-      @submit="$emit('createBooking')"
-    />
+    <div class="booking-workspace">
+      <BookingCalendar :bookings="bookings" @select-slot="$emit('selectSlot', $event)" />
+
+      <BookingForm
+        :services="services"
+        :form="bookingForm"
+        :error="error"
+        :success="success"
+        :min-date="minDate"
+        @submit="$emit('createBooking')"
+      />
+    </div>
   </section>
 </template>

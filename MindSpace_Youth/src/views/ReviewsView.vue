@@ -42,7 +42,7 @@ defineEmits(['submitRating'])
       </div>
 
       <div class="review-list">
-        <article v-for="(rating, index) in ratings" :key="index">
+        <article v-for="(rating, index) in ratings" :key="rating.id || index">
           <strong>{{ rating.service }} — {{ rating.score }}/5</strong>
           <p>{{ rating.comment || 'No written comment.' }}</p>
           <small>— {{ rating.user }}</small>
