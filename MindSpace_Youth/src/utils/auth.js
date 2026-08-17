@@ -1,7 +1,6 @@
 import {
   auth,
   db,
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -28,45 +27,54 @@ function authErrorMessage(error, fallback) {
   return fallback
 }
 
+const profileCreationPromises = new Map()
+
 /**
- * Register a new user with Firebase Auth and store profile in Firestore.
- * Returns { success, error, user }
+ * Create a standard Firestore profile on the first verified sign-in.
+ * Existing profiles, including administrator profiles, are never overwritten.
  */
-export async function registerUser(email, password, name) {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-    const firebaseUser = userCredential.user
+export async function ensureUserProfile(firebaseUser) {
+  if (!firebaseUser?.emailVerified) {
+    return { success: false, error: 'A verified email address is required.' }
+  }
 
-    // Save user profile in Firestore
-    await setDoc(doc(db, 'users', firebaseUser.uid), {
-      name,
-      email: email.toLowerCase(),
-      // Public registration can only create a standard young-user account.
-      // Admin access is assigned separately by a trusted Firebase administrator.
-      role: 'young_user',
-      uid: firebaseUser.uid,
-      createdAt: new Date().toISOString(),
-    })
+  if (profileCreationPromises.has(firebaseUser.uid)) {
+    return profileCreationPromises.get(firebaseUser.uid)
+  }
 
-    await sendEmailVerification(firebaseUser, actionCodeSettings())
-    await signOut(auth)
+  const creationPromise = (async () => {
+    try {
+      const profileRef = doc(db, 'users', firebaseUser.uid)
+      const existingProfile = await getDoc(profileRef)
+      if (existingProfile.exists()) {
+        return { success: true, profile: existingProfile.data(), created: false }
+      }
 
-    return { success: true, user: firebaseUser, verificationSent: true }
-  } catch (error) {
-    await signOut(auth).catch(() => {})
-    let message = 'Registration failed.'
-    if (error.code === 'auth/email-already-in-use') {
-      message = 'An account with this email already exists.'
-    } else if (error.code === 'auth/weak-password') {
-      message = 'Password must be at least 6 characters.'
-    } else if (error.code === 'auth/invalid-email') {
-      message = 'Please enter a valid email address.'
-    } else if (error.code === 'auth/operation-not-allowed') {
-      message = 'Email and password sign-in is not enabled in Firebase.'
-    } else if (error.code === 'auth/quota-exceeded') {
-      message = 'Email quota exceeded. Please try again later.'
+      const fallbackName = String(firebaseUser.email || '').split('@')[0]
+      const name = String(firebaseUser.displayName || fallbackName || 'MindSpace user')
+        .replace(/[<>]/g, '')
+        .trim()
+        .slice(0, 60)
+      const profile = {
+        name,
+        email: String(firebaseUser.email || '').toLowerCase(),
+        role: 'young_user',
+        uid: firebaseUser.uid,
+        createdAt: new Date().toISOString(),
+      }
+
+      await setDoc(profileRef, profile)
+      return { success: true, profile, created: true }
+    } catch {
+      return { success: false, error: 'Your verified account profile could not be activated.' }
     }
-    return { success: false, error: message }
+  })()
+
+  profileCreationPromises.set(firebaseUser.uid, creationPromise)
+  try {
+    return await creationPromise
+  } finally {
+    profileCreationPromises.delete(firebaseUser.uid)
   }
 }
 
@@ -84,6 +92,11 @@ export async function loginUser(email, password) {
         code: 'auth/email-not-verified',
         error: 'Please verify your email address before signing in.',
       }
+    }
+    const profileResult = await ensureUserProfile(userCredential.user)
+    if (!profileResult.success) {
+      await signOut(auth)
+      return profileResult
     }
     return { success: true, user: userCredential.user }
   } catch (error) {

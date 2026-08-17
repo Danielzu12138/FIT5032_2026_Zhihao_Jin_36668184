@@ -19,11 +19,22 @@ service cloud.firestore {
       allow read: if signedIn() &&
         (request.auth.uid == userId || isAdmin());
 
-      // Registration must create the profile before the email can be verified.
-      allow create: if request.auth != null &&
+      // A profile is activated only after the account has verified its email.
+      allow create: if signedIn() &&
         request.auth.uid == userId &&
         request.resource.data.uid == request.auth.uid &&
-        request.resource.data.role == 'young_user';
+        request.resource.data.role == 'young_user' &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 60 &&
+        request.resource.data.keys().hasOnly([
+          'name',
+          'email',
+          'role',
+          'uid',
+          'createdAt'
+        ]);
 
       allow update: if isAdmin() ||
         (signedIn() &&

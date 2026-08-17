@@ -13,7 +13,18 @@ async function apiRequest(path, options = {}) {
       ...options,
       headers,
     })
-    const body = await response.json().catch(() => ({}))
+    const contentType = response.headers.get('Content-Type') || ''
+    const body = contentType.includes('application/json')
+      ? await response.json().catch(() => ({}))
+      : {}
+
+    if (!contentType.includes('application/json')) {
+      return {
+        success: false,
+        unavailable: true,
+        error: 'The cloud function is not available in this environment.',
+      }
+    }
 
     if (!response.ok) {
       return {
@@ -56,3 +67,16 @@ export function sendEmailWithAttachment(payload) {
   })
 }
 
+export function startEmailRegistration(payload) {
+  return apiRequest('/api/start-registration', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function completeEmailRegistration(payload) {
+  return apiRequest('/api/complete-registration', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
