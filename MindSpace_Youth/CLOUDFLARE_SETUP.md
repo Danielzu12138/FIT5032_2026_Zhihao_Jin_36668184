@@ -82,6 +82,18 @@ administrator email is read from Firestore, so the browser cannot select an arbi
 The attached report contains aggregate totals only. Individual names, emails, support services and
 booking records are not sent to Resend.
 
+## Global booking conflicts
+
+Every new appointment is written with a deterministic `booking_slots/{date_time}` lock in the same
+Firestore transaction. The transaction first reads the global lock; if another user creates it
+concurrently, Firestore retries the transaction and rejects the second booking. Firestore Rules
+also require the booking and lock documents to reference each other, so neither can be created
+independently by a normal user.
+
+Bookings created before this feature do not have slot-lock documents. Before final testing, remove
+old mock bookings from the `bookings` collection, or manually create matching `booking_slots`
+documents using IDs such as `2026-08-20_09:30`. New bookings create locks automatically.
+
 ## Deployment checks
 
 After pushing the changes to `main`, confirm:
@@ -95,3 +107,4 @@ After pushing the changes to `main`, confirm:
 7. Forgot password sends a Firebase reset email.
 8. A verified administrator can send the summary CSV from Admin Dashboard.
 9. A normal young user cannot access the admin page or email Function.
+10. Two accounts submitting the same date and time result in one success and one conflict message.

@@ -1,8 +1,19 @@
-import { db, collection, doc, getDocs, addDoc, deleteDoc, query, where } from '../firebase'
+import {
+  db,
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  query,
+  where,
+  runTransaction,
+} from '../firebase'
 
 export const COLLECTIONS = {
   users: 'users',
   bookings: 'bookings',
+  bookingSlots: 'booking_slots',
   ratings: 'ratings',
   savedResources: 'saved_resources',
 }
@@ -34,12 +45,42 @@ export async function fetchUserBookings(uid) {
 
 export async function addBooking(booking) {
   try {
-    const docRef = await addDoc(collection(db, COLLECTIONS.bookings), {
-      ...booking,
-      createdAt: new Date().toISOString(),
+    const slotId = `${booking.date}_${booking.time}`
+    const bookingRef = doc(collection(db, COLLECTIONS.bookings))
+    const slotRef = doc(db, COLLECTIONS.bookingSlots, slotId)
+    const createdAt = new Date().toISOString()
+
+    await runTransaction(db, async (transaction) => {
+      const occupiedSlot = await transaction.get(slotRef)
+      if (occupiedSlot.exists()) {
+        const conflictError = new Error('This time has already been booked.')
+        conflictError.code = 'booking/slot-unavailable'
+        throw conflictError
+      }
+
+      transaction.set(bookingRef, {
+        ...booking,
+        slotId,
+        createdAt,
+      })
+      transaction.set(slotRef, {
+        bookingId: bookingRef.id,
+        service: booking.service,
+        date: booking.date,
+        time: booking.time,
+        createdAt,
+      })
     })
-    return { success: true, id: docRef.id }
-  } catch {
+
+    return { success: true, id: bookingRef.id, slotId }
+  } catch (error) {
+    if (error?.code === 'booking/slot-unavailable') {
+      return {
+        success: false,
+        conflict: true,
+        error: 'That time was just booked by another user. Please choose another slot.',
+      }
+    }
     return { success: false, error: 'Failed to create booking.' }
   }
 }

@@ -27,7 +27,7 @@ import {
   toggleSavedResource,
 } from './utils/storage'
 import { isFutureDateTime, isValidEmail, sanitizeInput } from './utils/validation'
-import { checkBookingOnServer, encodeBase64, sendEmailWithAttachment } from './utils/api'
+import { encodeBase64, sendEmailWithAttachment, validateBookingOnServer } from './utils/api'
 import DeniedView from './views/DeniedView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
@@ -575,7 +575,13 @@ async function createBooking() {
     return
   }
   const selectedDay = new Date(`${bookingForm.date}T12:00:00`).getDay()
-  if (selectedDay === 0 || selectedDay === 6 || bookingForm.time < '09:00' || bookingForm.time > '17:30') {
+  if (
+    selectedDay === 0 ||
+    selectedDay === 6 ||
+    bookingForm.time < '09:00' ||
+    bookingForm.time > '17:30' ||
+    !['00', '30'].includes(bookingForm.time.slice(3))
+  ) {
     bookingError.value = 'Sessions are available Monday to Friday from 9:00 AM to 5:30 PM.'
     return
   }
@@ -593,7 +599,7 @@ async function createBooking() {
 
   bookingSubmitting.value = true
   try {
-    const serverValidation = await checkBookingOnServer({
+    const serverValidation = await validateBookingOnServer({
       service: bookingForm.service,
       date: bookingForm.date,
       time: bookingForm.time,
@@ -615,7 +621,7 @@ async function createBooking() {
     })
 
     if (result.success) {
-      bookingSuccess.value = 'Booking request submitted successfully.'
+      bookingSuccess.value = 'Booking request submitted and the time slot is now reserved.'
       bookingForm.date = ''
       bookingForm.time = ''
       bookingForm.notes = ''

@@ -20,6 +20,7 @@ import {
   query,
   where,
   setDoc,
+  runTransaction,
 } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -53,4 +54,5 @@ export {
   query,
   where,
   setDoc,
+  runTransaction,
 }

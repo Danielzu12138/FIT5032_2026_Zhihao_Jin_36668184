@@ -20,7 +20,7 @@
 
 ## Category F: implemented innovations
 
-1. Appointment calendar: FullCalendar day/week/month views, 30-minute constraints, future-date checks and conflict handling.
+1. Appointment calendar: FullCalendar day/week/month views, 30-minute constraints, future-date checks and atomic global conflict handling through deterministic `booking_slots` documents and Firestore transactions.
 2. Interactive analytics: Chart.js graphs are generated from Firestore ratings and booking status data.
 3. Admin dashboard: role-protected user, booking, rating, export and aggregate-email tools.
 4. Offline support: online/offline detection and persistent Local Storage booking drafts.
@@ -28,7 +28,7 @@
 
 ## Recommended future upgrades
 
-- Move global booking-slot ownership into a dedicated server-managed collection for atomic conflict prevention across all users.
+- Extend global slot locks with staff-specific capacity, atomic cancellation and rescheduling workflows, and administrator availability controls.
 - Add consent-based bulk email preferences before implementing campaign email.
 - Add automated accessibility testing in continuous integration and repeat manual screen-reader testing.
 - Replace the static support-centre dataset with an approved live provider directory while retaining a privacy-preserving local search mode.

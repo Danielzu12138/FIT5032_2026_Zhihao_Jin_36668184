@@ -53,7 +53,7 @@ export function encodeBase64(value) {
   return btoa(binary)
 }
 
-export function checkBookingOnServer(booking) {
+export function validateBookingOnServer(booking) {
   return apiRequest('/api/check-booking', {
     method: 'POST',
     body: JSON.stringify(booking),

@@ -15,6 +15,55 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function bookingHasMatchingSlot(bookingId, slotId) {
+      return existsAfter(
+          /databases/$(database)/documents/booking_slots/$(slotId)
+        ) &&
+        getAfter(
+          /databases/$(database)/documents/booking_slots/$(slotId)
+        ).data.bookingId == bookingId;
+    }
+
+    function validSupportService(value) {
+      return value == 'Online wellbeing check-in' ||
+        value == 'Study stress support' ||
+        value == 'Work pressure support' ||
+        value == 'Sleep and routine planning';
+    }
+
+    function validBookingTime(value) {
+      return value == '09:00' || value == '09:30' ||
+        value == '10:00' || value == '10:30' ||
+        value == '11:00' || value == '11:30' ||
+        value == '12:00' || value == '12:30' ||
+        value == '13:00' || value == '13:30' ||
+        value == '14:00' || value == '14:30' ||
+        value == '15:00' || value == '15:30' ||
+        value == '16:00' || value == '16:30' ||
+        value == '17:00' || value == '17:30';
+    }
+
+    function slotHasMatchingBooking(slotId, bookingId, supportService, date, time) {
+      return existsAfter(
+          /databases/$(database)/documents/bookings/$(bookingId)
+        ) &&
+        getAfter(
+          /databases/$(database)/documents/bookings/$(bookingId)
+        ).data.uid == request.auth.uid &&
+        getAfter(
+          /databases/$(database)/documents/bookings/$(bookingId)
+        ).data.slotId == slotId &&
+        getAfter(
+          /databases/$(database)/documents/bookings/$(bookingId)
+        ).data['service'] == supportService &&
+        getAfter(
+          /databases/$(database)/documents/bookings/$(bookingId)
+        ).data.date == date &&
+        getAfter(
+          /databases/$(database)/documents/bookings/$(bookingId)
+        ).data.time == time;
+    }
+
     match /users/{userId} {
       allow read: if signedIn() &&
         (request.auth.uid == userId || isAdmin());
@@ -47,10 +96,62 @@ service cloud.firestore {
 
     match /bookings/{bookingId} {
       allow create: if signedIn() &&
-        request.resource.data.uid == request.auth.uid;
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 60 &&
+        validSupportService(request.resource.data['service']) &&
+        request.resource.data.date is string &&
+        request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        validBookingTime(request.resource.data.time) &&
+        request.resource.data.notes is string &&
+        request.resource.data.notes.size() <= 160 &&
+        request.resource.data.status == 'Pending' &&
+        request.resource.data.slotId ==
+          request.resource.data.date + '_' + request.resource.data.time &&
+        request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'name',
+          'service',
+          'date',
+          'time',
+          'notes',
+          'status',
+          'slotId',
+          'createdAt'
+        ]) &&
+        bookingHasMatchingSlot(bookingId, request.resource.data.slotId);
 
       allow read: if isAdmin() ||
         (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Each date/time has one deterministic lock document. The lock and its
+    // matching booking must be created together in the same atomic transaction.
+    match /booking_slots/{slotId} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+
+      allow create: if signedIn() &&
+        request.resource.data.keys().hasOnly([
+          'bookingId',
+          'service',
+          'date',
+          'time',
+          'createdAt'
+        ]) &&
+        slotId == request.resource.data.date + '_' + request.resource.data.time &&
+        slotHasMatchingBooking(
+          slotId,
+          request.resource.data.bookingId,
+          request.resource.data['service'],
+          request.resource.data.date,
+          request.resource.data.time
+        );
 
       allow update, delete: if isAdmin();
     }
