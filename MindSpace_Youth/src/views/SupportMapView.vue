@@ -99,7 +99,7 @@ function planTrip() {
       [origin.lat, origin.lng],
       [destination.lat, destination.lng],
     ],
-    { color: '#1a5c6e', weight: 5, opacity: 0.85, dashArray: '10 8' },
+    { color: '#285f58', weight: 5, opacity: 0.85, dashArray: '10 8' },
   ).addTo(map)
   map.fitBounds(tripLayer.getBounds(), { padding: [40, 40] })
 
@@ -123,7 +123,7 @@ onMounted(() => {
     const layer = L.circleMarker([centre.lat, centre.lng], {
       radius: 10,
       color: '#ffffff',
-      fillColor: '#1a5c6e',
+      fillColor: '#285f58',
       fillOpacity: 1,
       weight: 3,
     })

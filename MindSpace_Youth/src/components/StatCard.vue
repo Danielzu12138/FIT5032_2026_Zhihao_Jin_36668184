@@ -12,13 +12,24 @@ defineProps({
 </script>
 
 <template>
-  <article
-    class="info-card"
-    style="background: linear-gradient(135deg, var(--color-primary-bg, #eef9f8), #ffffff)"
-  >
+  <article class="info-card stat-card">
     <h2>{{ title }}</h2>
-    <p style="font-size: 1.4rem; font-weight: 800; color: var(--color-primary, #1a7f7a); margin: 0">
+    <p>
       {{ value }}
     </p>
   </article>
 </template>
+
+<style scoped>
+.stat-card {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary-light);
+}
+
+.stat-card p {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+</style>

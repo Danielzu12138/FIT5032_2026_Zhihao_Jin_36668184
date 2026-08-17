@@ -8,31 +8,57 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  savedActionLabel: {
+    type: String,
+    default: 'Saved',
+  },
 })
 
-defineEmits(['save'])
+defineEmits(['save', 'open'])
 </script>
 
 <template>
   <article class="resource-card">
+    <img
+      v-if="resource.image"
+      class="resource-card-image"
+      :src="resource.image"
+      :alt="resource.imageAlt"
+      loading="lazy"
+      width="800"
+      height="450"
+    />
     <span>{{ resource.category }} · {{ resource.time }}</span>
     <h2>{{ resource.title }}</h2>
     <p>{{ resource.summary }}</p>
-    <button :class="{ secondary: saved }" type="button" @click="$emit('save', resource.id)">
-      {{ saved ? '✅ Saved' : '🔖 Save resource' }}
-    </button>
+    <div class="resource-card-actions">
+      <button class="resource-read-button" type="button" @click="$emit('open', resource.id)">
+        Read guide
+      </button>
+      <button
+        :class="saved ? 'saved-button' : 'secondary'"
+        type="button"
+        @click="$emit('save', resource.id)"
+      >
+        {{ saved ? savedActionLabel : 'Save resource' }}
+      </button>
+    </div>
   </article>
 </template>
 
 <style scoped>
-.resource-card button.secondary {
-  background: var(--color-success-bg, #e3f5e9);
-  color: var(--color-success, #1f8b4c);
-  border: 1px solid var(--color-success, #1f8b4c);
+.resource-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: auto;
 }
 
-.resource-card button.secondary:hover {
-  background: var(--color-success, #1f8b4c);
-  color: #fff;
+.resource-card-actions button {
+  flex: 1 1 150px;
+}
+
+.resource-read-button {
+  order: -1;
 }
 </style>

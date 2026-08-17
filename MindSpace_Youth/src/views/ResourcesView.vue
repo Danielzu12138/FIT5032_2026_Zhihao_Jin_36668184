@@ -20,14 +20,14 @@ defineProps({
   },
 })
 
-defineEmits(['updateFilter', 'saveResource'])
+defineEmits(['updateFilter', 'saveResource', 'openResource'])
 </script>
 
 <template>
   <section class="content-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">📚 Resource library</p>
+        <p class="eyebrow">Resource library</p>
         <h1>Resources</h1>
         <p>Short, practical guides written with young people in mind.</p>
       </div>
@@ -46,6 +46,7 @@ defineEmits(['updateFilter', 'saveResource'])
         :resource="resource"
         :saved="savedResourceIds.includes(resource.id)"
         @save="$emit('saveResource', $event)"
+        @open="$emit('openResource', $event)"
       />
     </div>
   </section>

@@ -27,6 +27,10 @@ defineProps({
     type: String,
     required: true,
   },
+  submitting: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 defineEmits(['createBooking', 'selectSlot'])
@@ -36,7 +40,7 @@ defineEmits(['createBooking', 'selectSlot'])
   <section class="content-panel">
     <div class="section-heading support-heading">
       <div>
-      <p class="eyebrow">📅 Online support</p>
+      <p class="eyebrow">Online support</p>
       <h1>Book a support session</h1>
       <p>
         Choose a service that fits what you're going through, pick a date and time, and we'll take
@@ -55,6 +59,7 @@ defineEmits(['createBooking', 'selectSlot'])
         :error="error"
         :success="success"
         :min-date="minDate"
+        :submitting="submitting"
         @submit="$emit('createBooking')"
       />
     </div>

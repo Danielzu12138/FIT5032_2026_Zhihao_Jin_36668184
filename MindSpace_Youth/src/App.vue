@@ -31,6 +31,7 @@ import DeniedView from './views/DeniedView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
 import ResourcesView from './views/ResourcesView.vue'
+import ResourceDetailView from './views/ResourceDetailView.vue'
 import ReviewsView from './views/ReviewsView.vue'
 import UserDashboardView from './views/UserDashboardView.vue'
 
@@ -54,14 +55,18 @@ const authMode = ref('login')
 const authError = ref('')
 const authSuccess = ref('')
 const authNeedsVerification = ref(false)
+const authPendingAction = ref('')
 const bookingError = ref('')
 const bookingSuccess = ref('')
+const bookingSubmitting = ref(false)
 const adminEmailError = ref('')
 const adminEmailSuccess = ref('')
 const adminEmailSending = ref(false)
 const ratingError = ref('')
 const ratingSuccess = ref('')
 const resourceFilter = ref('All')
+const selectedResourceId = ref('')
+const resourceReturnPage = ref('resources')
 
 const loginForm = reactive({
   email: '',
@@ -151,6 +156,10 @@ const filteredResources = computed(() =>
   resourceFilter.value === 'All'
     ? resources
     : resources.filter((resource) => resource.category === resourceFilter.value),
+)
+
+const selectedResource = computed(() =>
+  resources.find((resource) => resource.id === selectedResourceId.value),
 )
 
 const userBookings = computed(() =>
@@ -344,6 +353,7 @@ async function refreshUserData() {
 }
 
 async function register() {
+  if (authPendingAction.value) return
   authError.value = ''
   authSuccess.value = ''
 
@@ -369,22 +379,27 @@ async function register() {
     return
   }
 
-  const result = await registerUser(email, password, name)
-  if (result.success) {
-    authMode.value = 'login'
-    authSuccess.value = 'Account created. Check your real email and verify it before logging in.'
-    authNeedsVerification.value = false
-    // Clear register form after successful registration
-    registerForm.name = ''
-    registerForm.email = ''
-    registerForm.password = ''
-    registerForm.confirmPassword = ''
-  } else {
-    authError.value = result.error
+  authPendingAction.value = 'register'
+  try {
+    const result = await registerUser(email, password, name)
+    if (result.success) {
+      authMode.value = 'login'
+      authSuccess.value = 'Account created. Check your real email and verify it before logging in.'
+      authNeedsVerification.value = false
+      registerForm.name = ''
+      registerForm.email = ''
+      registerForm.password = ''
+      registerForm.confirmPassword = ''
+    } else {
+      authError.value = result.error
+    }
+  } finally {
+    authPendingAction.value = ''
   }
 }
 
 async function login() {
+  if (authPendingAction.value) return
   authError.value = ''
   authSuccess.value = ''
 
@@ -400,20 +415,25 @@ async function login() {
     return
   }
 
-  const result = await loginUser(email, password)
-  if (result.success) {
-    authSuccess.value = 'Welcome back.'
-    authNeedsVerification.value = false
-    // Clear login form after successful login
-    loginForm.email = ''
-    loginForm.password = ''
-  } else {
-    authError.value = result.error
-    authNeedsVerification.value = result.code === 'auth/email-not-verified'
+  authPendingAction.value = 'login'
+  try {
+    const result = await loginUser(email, password)
+    if (result.success) {
+      authSuccess.value = 'Welcome back. Loading your dashboard...'
+      authNeedsVerification.value = false
+      loginForm.email = ''
+      loginForm.password = ''
+    } else {
+      authError.value = result.error
+      authNeedsVerification.value = result.code === 'auth/email-not-verified'
+    }
+  } finally {
+    authPendingAction.value = ''
   }
 }
 
 async function resendVerification() {
+  if (authPendingAction.value) return
   authError.value = ''
   authSuccess.value = ''
 
@@ -424,17 +444,23 @@ async function resendVerification() {
     return
   }
 
-  const result = await resendVerificationEmail(email, password)
-  if (result.success) {
-    authNeedsVerification.value = false
-    authSuccess.value = 'A new verification email has been sent. Check your inbox and spam folder.'
-    loginForm.password = ''
-  } else {
-    authError.value = result.error
+  authPendingAction.value = 'verification'
+  try {
+    const result = await resendVerificationEmail(email, password)
+    if (result.success) {
+      authNeedsVerification.value = false
+      authSuccess.value = 'A new verification email has been sent. Check your inbox and spam folder.'
+      loginForm.password = ''
+    } else {
+      authError.value = result.error
+    }
+  } finally {
+    authPendingAction.value = ''
   }
 }
 
 async function requestPasswordReset() {
+  if (authPendingAction.value) return
   authError.value = ''
   authSuccess.value = ''
 
@@ -444,11 +470,16 @@ async function requestPasswordReset() {
     return
   }
 
-  const result = await resetPassword(email)
-  if (result.success) {
-    authSuccess.value = 'Password reset instructions have been sent to your email.'
-  } else {
-    authError.value = result.error
+  authPendingAction.value = 'reset'
+  try {
+    const result = await resetPassword(email)
+    if (result.success) {
+      authSuccess.value = 'Password reset instructions have been sent to your email.'
+    } else {
+      authError.value = result.error
+    }
+  } finally {
+    authPendingAction.value = ''
   }
 }
 
@@ -494,7 +525,22 @@ async function saveResource(resourceId) {
   }
 }
 
+function openResource(resourceId) {
+  if (!resources.some((resource) => resource.id === resourceId)) return
+  resourceReturnPage.value = state.page === 'dashboard' ? 'dashboard' : 'resources'
+  selectedResourceId.value = resourceId
+  state.page = 'resource-detail'
+  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }))
+}
+
+function closeResource() {
+  state.page = resourceReturnPage.value
+  selectedResourceId.value = ''
+  requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }))
+}
+
 async function createBooking() {
+  if (bookingSubmitting.value) return
   bookingError.value = ''
   bookingSuccess.value = ''
 
@@ -528,36 +574,41 @@ async function createBooking() {
     return
   }
 
-  const serverValidation = await checkBookingOnServer({
-    service: bookingForm.service,
-    date: bookingForm.date,
-    time: bookingForm.time,
-  })
-  if (!serverValidation.success && !serverValidation.unavailable) {
-    bookingError.value = serverValidation.error || 'This booking could not be validated.'
-    return
-  }
+  bookingSubmitting.value = true
+  try {
+    const serverValidation = await checkBookingOnServer({
+      service: bookingForm.service,
+      date: bookingForm.date,
+      time: bookingForm.time,
+    })
+    if (!serverValidation.success && !serverValidation.unavailable) {
+      bookingError.value = serverValidation.error || 'This booking could not be validated.'
+      return
+    }
 
-  const result = await addBooking({
-    uid: state.currentUser.uid,
-    email: state.currentUser.email,
-    name: state.currentUser.name,
-    service: bookingForm.service,
-    date: bookingForm.date,
-    time: bookingForm.time,
-    notes: sanitizeInput(bookingForm.notes, 160),
-    status: 'Pending',
-  })
+    const result = await addBooking({
+      uid: state.currentUser.uid,
+      email: state.currentUser.email,
+      name: state.currentUser.name,
+      service: bookingForm.service,
+      date: bookingForm.date,
+      time: bookingForm.time,
+      notes: sanitizeInput(bookingForm.notes, 160),
+      status: 'Pending',
+    })
 
-  if (result.success) {
-    bookingSuccess.value = 'Booking request submitted successfully.'
-    bookingForm.date = ''
-    bookingForm.time = ''
-    bookingForm.notes = ''
-    const bookingsResult = await fetchUserBookings(state.currentUser.uid)
-    if (bookingsResult.success) state.bookings = bookingsResult.bookings
-  } else {
-    bookingError.value = result.error
+    if (result.success) {
+      bookingSuccess.value = 'Booking request submitted successfully.'
+      bookingForm.date = ''
+      bookingForm.time = ''
+      bookingForm.notes = ''
+      const bookingsResult = await fetchUserBookings(state.currentUser.uid)
+      if (bookingsResult.success) state.bookings = bookingsResult.bookings
+    } else {
+      bookingError.value = result.error
+    }
+  } finally {
+    bookingSubmitting.value = false
   }
 }
 
@@ -718,6 +769,15 @@ onUnmounted(() => {
           :saved-resource-ids="state.savedResourceIds"
           @update-filter="resourceFilter = $event"
           @save-resource="saveResource"
+          @open-resource="openResource"
+        />
+
+        <ResourceDetailView
+          v-else-if="state.page === 'resource-detail' && selectedResource"
+          :resource="selectedResource"
+          :saved="state.savedResourceIds.includes(selectedResource.id)"
+          @back="closeResource"
+          @save="saveResource"
         />
 
         <SupportMapView v-else-if="state.page === 'find-support'" />
@@ -730,6 +790,7 @@ onUnmounted(() => {
           :min-date="minBookingDate"
           :error="bookingError"
           :success="bookingSuccess"
+          :submitting="bookingSubmitting"
           @create-booking="createBooking"
           @select-slot="selectBookingSlot"
         />
@@ -753,6 +814,7 @@ onUnmounted(() => {
           :error="authError"
           :success="authSuccess"
           :verification-required="authNeedsVerification"
+          :pending-action="authPendingAction"
           @set-mode="switchAuthMode"
           @login="login"
           @register="register"
@@ -766,6 +828,9 @@ onUnmounted(() => {
           :user-bookings="userBookings"
           :saved-resources="savedResources"
           :average-rating="averageRating"
+          @save-resource="saveResource"
+          @browse-resources="setPage('resources')"
+          @open-resource="openResource"
         />
 
         <AdminDashboardView
@@ -793,7 +858,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  color: #2f6f73;
+  color: var(--color-primary);
   font-size: 1.2rem;
   font-weight: 700;
 }

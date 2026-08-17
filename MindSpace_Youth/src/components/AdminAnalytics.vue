@@ -58,8 +58,8 @@ function renderCharts() {
         {
           label: 'Average rating',
           data: ratings.values.length ? ratings.values : [0],
-          backgroundColor: '#8b7aa7',
-          borderColor: '#5f5078',
+          backgroundColor: '#665d86',
+          borderColor: '#4f4869',
           borderWidth: 1,
         },
       ],
@@ -81,8 +81,8 @@ function renderCharts() {
           label: 'Bookings',
           data: bookings.values.length ? bookings.values : [1],
           backgroundColor: bookings.values.length
-            ? ['#1a5c6e', '#c97b6b', '#8b7aa7', '#2d7d5a']
-            : ['#e2dddb'],
+            ? ['#285f58', '#cf6f59', '#665d86', '#2e6b51']
+            : ['#d8e0dc'],
           borderWidth: 0,
         },
       ],

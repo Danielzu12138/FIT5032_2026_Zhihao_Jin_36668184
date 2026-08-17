@@ -49,8 +49,8 @@ const events = computed(() =>
       id: booking.id,
       title: `${booking.service} · ${booking.status || 'Pending'}`,
       start: `${booking.date}T${booking.time}`,
-      backgroundColor: booking.status === 'Confirmed' ? '#2d7d5a' : '#8b7aa7',
-      borderColor: booking.status === 'Confirmed' ? '#2d7d5a' : '#8b7aa7',
+      backgroundColor: booking.status === 'Confirmed' ? '#2e6b51' : '#665d86',
+      borderColor: booking.status === 'Confirmed' ? '#2e6b51' : '#665d86',
     })),
 )
 

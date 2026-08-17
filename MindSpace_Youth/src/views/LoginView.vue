@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const showResetForm = ref(false)
 
@@ -28,6 +28,20 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  pendingAction: {
+    type: String,
+    default: '',
+  },
+})
+
+const pendingMessage = computed(() => {
+  const messages = {
+    login: 'Signing you in securely...',
+    register: 'Creating your account and sending the verification email...',
+    reset: 'Sending password reset instructions...',
+    verification: 'Sending a new verification email...',
+  }
+  return messages[props.pendingAction] || ''
 })
 
 defineEmits(['setMode', 'login', 'register', 'resetPassword', 'resendVerification'])
@@ -43,7 +57,7 @@ watch(
 <template>
   <section class="content-panel account-layout">
     <div>
-      <p class="eyebrow">🔐 Authentication</p>
+      <p class="eyebrow">Authentication</p>
       <h1>Login or register</h1>
       <p>
         Create an account to book support sessions, save resources, and share your feedback. Already
@@ -57,6 +71,7 @@ watch(
         type="button"
         role="tab"
         :aria-selected="authMode === 'login'"
+        :disabled="Boolean(pendingAction)"
         @click="$emit('setMode', 'login')"
       >
         Login
@@ -66,6 +81,7 @@ watch(
         type="button"
         role="tab"
         :aria-selected="authMode === 'register'"
+        :disabled="Boolean(pendingAction)"
         @click="$emit('setMode', 'register')"
       >
         Register
@@ -75,24 +91,57 @@ watch(
     <form
       v-if="authMode === 'login' && showResetForm"
       class="form-card"
+      :aria-busy="Boolean(pendingAction)"
       @submit.prevent="$emit('resetPassword')"
     >
       <h2>Reset your password</h2>
       <p>Enter your account email and we will send a password reset link.</p>
       <label for="reset-email">
         Email
-        <input id="reset-email" v-model="loginForm.email" type="email" autocomplete="email" required />
+        <input
+          id="reset-email"
+          v-model="loginForm.email"
+          type="email"
+          autocomplete="email"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
       </label>
       <p v-if="error" class="message error" role="alert">{{ error }}</p>
       <p v-if="success" class="message success" role="status">{{ success }}</p>
-      <button type="submit">Send reset email</button>
-      <button class="secondary" type="button" @click="showResetForm = false">Back to login</button>
+      <p v-if="pendingMessage" class="pending-status" role="status">{{ pendingMessage }}</p>
+      <button type="submit" :disabled="Boolean(pendingAction)">
+        <span class="button-label">
+          <span v-if="pendingAction === 'reset'" class="button-spinner" aria-hidden="true"></span>
+          {{ pendingAction === 'reset' ? 'Sending reset link...' : 'Send reset email' }}
+        </span>
+      </button>
+      <button
+        class="secondary"
+        type="button"
+        :disabled="Boolean(pendingAction)"
+        @click="showResetForm = false"
+      >
+        Back to login
+      </button>
     </form>
 
-    <form v-else-if="authMode === 'login'" class="form-card" @submit.prevent="$emit('login')">
+    <form
+      v-else-if="authMode === 'login'"
+      class="form-card"
+      :aria-busy="Boolean(pendingAction)"
+      @submit.prevent="$emit('login')"
+    >
       <label for="login-email">
         Email
-        <input id="login-email" v-model="loginForm.email" type="email" autocomplete="email" required />
+        <input
+          id="login-email"
+          v-model="loginForm.email"
+          type="email"
+          autocomplete="email"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
       </label>
       <label for="login-password">
         Password
@@ -101,27 +150,61 @@ watch(
           v-model="loginForm.password"
           type="password"
           autocomplete="current-password"
+          :disabled="Boolean(pendingAction)"
           required
         />
       </label>
       <p v-if="error" class="message error" role="alert">{{ error }}</p>
       <p v-if="success" class="message success" role="status">{{ success }}</p>
-      <button type="submit">Login</button>
-      <button class="secondary" type="button" @click="showResetForm = true">Forgot password?</button>
+      <p v-if="pendingMessage" class="pending-status" role="status">{{ pendingMessage }}</p>
+      <button type="submit" :disabled="Boolean(pendingAction)">
+        <span class="button-label">
+          <span v-if="pendingAction === 'login'" class="button-spinner" aria-hidden="true"></span>
+          {{ pendingAction === 'login' ? 'Signing in...' : 'Login' }}
+        </span>
+      </button>
+      <button
+        class="secondary"
+        type="button"
+        :disabled="Boolean(pendingAction)"
+        @click="showResetForm = true"
+      >
+        Forgot password?
+      </button>
       <button
         v-if="verificationRequired"
         class="secondary"
         type="button"
+        :disabled="Boolean(pendingAction)"
         @click="$emit('resendVerification')"
       >
-        Resend verification email
+        <span class="button-label">
+          <span
+            v-if="pendingAction === 'verification'"
+            class="button-spinner dark"
+            aria-hidden="true"
+          ></span>
+          {{ pendingAction === 'verification' ? 'Sending verification...' : 'Resend verification email' }}
+        </span>
       </button>
     </form>
 
-    <form v-else class="form-card" @submit.prevent="$emit('register')">
+    <form
+      v-else
+      class="form-card"
+      :aria-busy="Boolean(pendingAction)"
+      @submit.prevent="$emit('register')"
+    >
       <label for="register-name">
         Full name
-        <input id="register-name" v-model="registerForm.name" type="text" maxlength="60" required />
+        <input
+          id="register-name"
+          v-model="registerForm.name"
+          type="text"
+          maxlength="60"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
       </label>
       <label for="register-email">
         Email
@@ -130,6 +213,7 @@ watch(
           v-model="registerForm.email"
           type="email"
           autocomplete="email"
+          :disabled="Boolean(pendingAction)"
           required
         />
       </label>
@@ -141,6 +225,7 @@ watch(
           type="password"
           autocomplete="new-password"
           minlength="8"
+          :disabled="Boolean(pendingAction)"
           required
         />
       </label>
@@ -152,12 +237,19 @@ watch(
           type="password"
           autocomplete="new-password"
           minlength="8"
+          :disabled="Boolean(pendingAction)"
           required
         />
       </label>
       <p v-if="error" class="message error" role="alert">{{ error }}</p>
       <p v-if="success" class="message success" role="status">{{ success }}</p>
-      <button type="submit">Create account</button>
+      <p v-if="pendingMessage" class="pending-status" role="status">{{ pendingMessage }}</p>
+      <button type="submit" :disabled="Boolean(pendingAction)">
+        <span class="button-label">
+          <span v-if="pendingAction === 'register'" class="button-spinner" aria-hidden="true"></span>
+          {{ pendingAction === 'register' ? 'Creating account...' : 'Create account' }}
+        </span>
+      </button>
     </form>
   </section>
 </template>

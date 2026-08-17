@@ -34,7 +34,7 @@ defineEmits(['submitRating'])
 <template>
   <section class="content-panel two-column">
     <div>
-      <p class="eyebrow">⭐ Reviews & feedback</p>
+      <p class="eyebrow">Reviews & feedback</p>
       <h1>Reviews & Ratings</h1>
       <div class="rating-summary">
         <strong>{{ averageRating }}</strong>

@@ -1,4 +1,5 @@
 <script setup>
+import ResourceCard from '../components/ResourceCard.vue'
 import StatCard from '../components/StatCard.vue'
 
 defineProps({
@@ -19,13 +20,15 @@ defineProps({
     required: true,
   },
 })
+
+defineEmits(['saveResource', 'browseResources', 'openResource'])
 </script>
 
 <template>
   <section class="content-panel">
     <div class="section-heading">
       <div>
-        <p class="eyebrow">👤 Young user dashboard</p>
+        <p class="eyebrow">Young user dashboard</p>
         <h1>My Dashboard</h1>
         <p>
           Welcome back, <strong>{{ currentUser.name }}</strong
@@ -35,9 +38,9 @@ defineProps({
     </div>
 
     <div class="section-grid">
-      <StatCard title="📅 My Bookings" :value="userBookings.length + ' booking request(s)'" />
-      <StatCard title="📚 Saved Resources" :value="savedResources.length + ' saved guide(s)'" />
-      <StatCard title="⭐ Average Rating" :value="averageRating" />
+      <StatCard title="My Bookings" :value="userBookings.length + ' booking request(s)'" />
+      <StatCard title="Saved Resources" :value="savedResources.length + ' saved guide(s)'" />
+      <StatCard title="Average Rating" :value="averageRating" />
     </div>
 
     <div class="responsive-table">
@@ -66,5 +69,33 @@ defineProps({
         </tbody>
       </table>
     </div>
+
+    <section class="dashboard-saved-section" aria-labelledby="saved-resources-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Your library</p>
+          <h2 id="saved-resources-heading">Saved Resources</h2>
+          <p>Guides you have saved for easy access.</p>
+        </div>
+        <button class="secondary" type="button" @click="$emit('browseResources')">
+          Browse resources
+        </button>
+      </div>
+
+      <div v-if="savedResources.length" class="card-grid">
+        <ResourceCard
+          v-for="resource in savedResources"
+          :key="resource.id"
+          :resource="resource"
+          saved
+          saved-action-label="Remove from saved"
+          @save="$emit('saveResource', $event)"
+          @open="$emit('openResource', $event)"
+        />
+      </div>
+      <p v-else class="dashboard-empty-state">
+        You have not saved any resources yet. Browse the resource library to add useful guides here.
+      </p>
+    </section>
   </section>
 </template>
