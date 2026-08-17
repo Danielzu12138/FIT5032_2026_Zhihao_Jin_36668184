@@ -28,10 +28,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  registrationCodeSent: {
-    type: Boolean,
-    default: false,
-  },
   pendingAction: {
     type: String,
     default: '',
@@ -41,23 +37,14 @@ const props = defineProps({
 const pendingMessage = computed(() => {
   const messages = {
     login: 'Signing you in securely...',
-    'registration-code': 'Checking your email and sending a verification code...',
-    'registration-complete': 'Verifying your code and creating your account...',
+    register: 'Creating your account and sending the verification link...',
     reset: 'Sending password reset instructions...',
     verification: 'Sending a new verification email...',
   }
   return messages[props.pendingAction] || ''
 })
 
-defineEmits([
-  'setMode',
-  'login',
-  'requestRegistrationCode',
-  'completeRegistration',
-  'cancelRegistration',
-  'resetPassword',
-  'resendVerification',
-])
+defineEmits(['setMode', 'login', 'register', 'resetPassword', 'resendVerification'])
 
 watch(
   () => props.authMode,
@@ -206,124 +193,67 @@ watch(
       v-else
       class="form-card"
       :aria-busy="Boolean(pendingAction)"
-      @submit.prevent="registrationCodeSent
-        ? $emit('completeRegistration')
-        : $emit('requestRegistrationCode')"
+      @submit.prevent="$emit('register')"
     >
-      <template v-if="!registrationCodeSent">
-        <label for="register-name">
-          Full name
-          <input
-            id="register-name"
-            v-model="registerForm.name"
-            type="text"
-            autocomplete="name"
-            maxlength="60"
-            :disabled="Boolean(pendingAction)"
-            required
-          />
-        </label>
-        <label for="register-email">
-          Email
-          <input
-            id="register-email"
-            v-model="registerForm.email"
-            type="email"
-            autocomplete="email"
-            maxlength="254"
-            :disabled="Boolean(pendingAction)"
-            required
-          />
-        </label>
-        <label for="register-password">
-          Password
-          <input
-            id="register-password"
-            v-model="registerForm.password"
-            type="password"
-            autocomplete="new-password"
-            minlength="8"
-            maxlength="128"
-            :disabled="Boolean(pendingAction)"
-            required
-          />
-        </label>
-        <label for="register-confirm-password">
-          Confirm password
-          <input
-            id="register-confirm-password"
-            v-model="registerForm.confirmPassword"
-            type="password"
-            autocomplete="new-password"
-            minlength="8"
-            maxlength="128"
-            :disabled="Boolean(pendingAction)"
-            required
-          />
-        </label>
-      </template>
-      <template v-else>
-        <div class="verification-summary">
-          <p class="eyebrow">Check your email</p>
-          <h2>Enter your verification code</h2>
-          <p>
-            We sent a six-digit code to <strong>{{ registerForm.email }}</strong>. The code expires
-            in 10 minutes.
-          </p>
-        </div>
-        <label for="register-verification-code">
-          Verification code
-          <input
-            id="register-verification-code"
-            v-model="registerForm.verificationCode"
-            class="verification-code-input"
-            type="text"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            pattern="[0-9]{6}"
-            maxlength="6"
-            placeholder="000000"
-            :disabled="Boolean(pendingAction)"
-            required
-          />
-        </label>
-      </template>
+      <label for="register-name">
+        Full name
+        <input
+          id="register-name"
+          v-model="registerForm.name"
+          type="text"
+          autocomplete="name"
+          maxlength="60"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
+      </label>
+      <label for="register-email">
+        Email
+        <input
+          id="register-email"
+          v-model="registerForm.email"
+          type="email"
+          autocomplete="email"
+          maxlength="254"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
+      </label>
+      <label for="register-password">
+        Password
+        <input
+          id="register-password"
+          v-model="registerForm.password"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          maxlength="128"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
+      </label>
+      <label for="register-confirm-password">
+        Confirm password
+        <input
+          id="register-confirm-password"
+          v-model="registerForm.confirmPassword"
+          type="password"
+          autocomplete="new-password"
+          minlength="8"
+          maxlength="128"
+          :disabled="Boolean(pendingAction)"
+          required
+        />
+      </label>
       <p v-if="error" class="message error" role="alert">{{ error }}</p>
       <p v-if="success" class="message success" role="status">{{ success }}</p>
       <p v-if="pendingMessage" class="pending-status" role="status">{{ pendingMessage }}</p>
       <button type="submit" :disabled="Boolean(pendingAction)">
         <span class="button-label">
-          <span
-            v-if="pendingAction === 'registration-code' || pendingAction === 'registration-complete'"
-            class="button-spinner"
-            aria-hidden="true"
-          ></span>
-          <template v-if="registrationCodeSent">
-            {{ pendingAction === 'registration-complete' ? 'Verifying code...' : 'Verify and create account' }}
-          </template>
-          <template v-else>
-            {{ pendingAction === 'registration-code' ? 'Sending code...' : 'Send verification code' }}
-          </template>
+          <span v-if="pendingAction === 'register'" class="button-spinner" aria-hidden="true"></span>
+          {{ pendingAction === 'register' ? 'Creating account...' : 'Create account' }}
         </span>
       </button>
-      <template v-if="registrationCodeSent">
-        <button
-          class="secondary"
-          type="button"
-          :disabled="Boolean(pendingAction)"
-          @click="$emit('requestRegistrationCode')"
-        >
-          Resend code
-        </button>
-        <button
-          class="secondary"
-          type="button"
-          :disabled="Boolean(pendingAction)"
-          @click="$emit('cancelRegistration')"
-        >
-          Use a different email
-        </button>
-      </template>
     </form>
   </section>
 </template>

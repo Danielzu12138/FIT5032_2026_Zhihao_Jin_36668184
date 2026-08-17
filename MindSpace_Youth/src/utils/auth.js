@@ -1,9 +1,11 @@
 import {
   auth,
   db,
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
+  updateProfile,
   signOut,
   onAuthStateChanged,
   doc,
@@ -28,6 +30,36 @@ function authErrorMessage(error, fallback) {
 }
 
 const profileCreationPromises = new Map()
+
+/**
+ * Create only the Firebase Auth account and send Firebase's verification link.
+ * The Firestore profile is created later by ensureUserProfile after verified sign-in.
+ */
+export async function registerUser(email, password, name) {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+    const firebaseUser = userCredential.user
+    await updateProfile(firebaseUser, { displayName: name })
+    await sendEmailVerification(firebaseUser, actionCodeSettings())
+    await signOut(auth)
+    return { success: true, user: firebaseUser, verificationSent: true }
+  } catch (error) {
+    await signOut(auth).catch(() => {})
+    let message = 'Registration failed.'
+    if (error.code === 'auth/email-already-in-use') {
+      message = 'An account with this email already exists. Log in to resend verification.'
+    } else if (error.code === 'auth/weak-password') {
+      message = 'Password does not meet Firebase security requirements.'
+    } else if (error.code === 'auth/invalid-email') {
+      message = 'Please enter a valid email address.'
+    } else if (error.code === 'auth/operation-not-allowed') {
+      message = 'Email and password registration is not enabled in Firebase.'
+    } else if (error.code === 'auth/too-many-requests') {
+      message = 'Too many registration attempts. Please try again later.'
+    }
+    return { success: false, error: message }
+  }
+}
 
 /**
  * Create a standard Firestore profile on the first verified sign-in.

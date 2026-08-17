@@ -66,17 +66,3 @@ export function sendEmailWithAttachment(payload) {
     body: JSON.stringify(payload),
   })
 }
-
-export function startEmailRegistration(payload) {
-  return apiRequest('/api/start-registration', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export function completeEmailRegistration(payload) {
-  return apiRequest('/api/complete-registration', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}

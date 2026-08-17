@@ -7,6 +7,7 @@ import { resources } from './data/resources'
 import { supportServices } from './data/services'
 import { canAccess, getVisiblePages, pages } from './router'
 import {
+  registerUser,
   loginUser,
   resetPassword,
   resendVerificationEmail,
@@ -26,13 +27,7 @@ import {
   toggleSavedResource,
 } from './utils/storage'
 import { isFutureDateTime, isValidEmail, sanitizeInput } from './utils/validation'
-import {
-  checkBookingOnServer,
-  completeEmailRegistration,
-  encodeBase64,
-  sendEmailWithAttachment,
-  startEmailRegistration,
-} from './utils/api'
+import { checkBookingOnServer, encodeBase64, sendEmailWithAttachment } from './utils/api'
 import DeniedView from './views/DeniedView.vue'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
@@ -62,7 +57,6 @@ const authError = ref('')
 const authSuccess = ref('')
 const authNeedsVerification = ref(false)
 const authPendingAction = ref('')
-const registrationChallengeId = ref('')
 const bookingError = ref('')
 const bookingSuccess = ref('')
 const bookingSubmitting = ref(false)
@@ -85,7 +79,6 @@ const registerForm = reactive({
   email: '',
   password: '',
   confirmPassword: '',
-  verificationCode: '',
 })
 
 const bookingForm = reactive({
@@ -277,8 +270,6 @@ async function loadApp() {
       registerForm.email = ''
       registerForm.password = ''
       registerForm.confirmPassword = ''
-      registerForm.verificationCode = ''
-      registrationChallengeId.value = ''
       const ratingsResult = await fetchAllRatings()
       if (ratingsResult.success) state.ratings = ratingsResult.ratings
       authError.value = ''
@@ -305,8 +296,6 @@ function clearAllForms() {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  registerForm.verificationCode = ''
-  registrationChallengeId.value = ''
   ratingForm.service = supportServices[0]
   ratingForm.score = 5
   ratingForm.comment = ''
@@ -340,8 +329,6 @@ function switchAuthMode(mode) {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  registerForm.verificationCode = ''
-  registrationChallengeId.value = ''
   authError.value = ''
   authSuccess.value = ''
   authNeedsVerification.value = false
@@ -375,7 +362,11 @@ async function refreshUserData() {
   if (savedResult.success) state.savedResourceIds = savedResult.ids
 }
 
-function validatedRegistrationDetails() {
+async function register() {
+  if (authPendingAction.value) return
+  authError.value = ''
+  authSuccess.value = ''
+
   const name = sanitizeInput(registerForm.name, 60)
   const email = sanitizeInput(registerForm.email, 80).toLowerCase()
   const password = registerForm.password
@@ -383,88 +374,38 @@ function validatedRegistrationDetails() {
 
   if (!name || !email || !password || !confirmPassword) {
     authError.value = 'All registration fields are required.'
-    return null
+    return
   }
   if (!isValidEmail(email)) {
     authError.value = 'Please enter a valid email address.'
-    return null
+    return
   }
   if (password.length < 8) {
     authError.value = 'Password must be at least 8 characters.'
-    return null
+    return
   }
   if (password.length > 128) {
     authError.value = 'Password must be 128 characters or fewer.'
-    return null
+    return
   }
   if (password !== confirmPassword) {
     authError.value = 'Passwords do not match.'
-    return null
-  }
-  return { name, email, password }
-}
-
-async function requestRegistrationCode() {
-  if (authPendingAction.value) return
-  authError.value = ''
-  authSuccess.value = ''
-  const details = validatedRegistrationDetails()
-  if (!details) return
-
-  authPendingAction.value = 'registration-code'
-  try {
-    const result = await startEmailRegistration({
-      name: details.name,
-      email: details.email,
-    })
-    if (result.success) {
-      registrationChallengeId.value = result.challengeId
-      registerForm.verificationCode = ''
-      authSuccess.value = 'A six-digit code was sent to your email. It expires in 10 minutes.'
-    } else {
-      authError.value = result.error
-    }
-  } finally {
-    authPendingAction.value = ''
-  }
-}
-
-async function completeRegistration() {
-  if (authPendingAction.value) return
-  authError.value = ''
-  authSuccess.value = ''
-  const details = validatedRegistrationDetails()
-  if (!details) return
-  if (!registrationChallengeId.value) {
-    authError.value = 'Request a new verification code first.'
     return
   }
 
-  const code = String(registerForm.verificationCode || '').trim()
-  if (!/^\d{6}$/.test(code)) {
-    authError.value = 'Enter the six-digit verification code.'
-    return
-  }
-
-  authPendingAction.value = 'registration-complete'
+  authPendingAction.value = 'register'
   try {
-    const result = await completeEmailRegistration({
-      challengeId: registrationChallengeId.value,
-      email: details.email,
-      password: details.password,
-      code,
-    })
+    const result = await registerUser(email, password, name)
     if (result.success) {
-      loginForm.email = details.email
+      loginForm.email = email
       loginForm.password = ''
       authMode.value = 'login'
-      registrationChallengeId.value = ''
       registerForm.name = ''
       registerForm.email = ''
       registerForm.password = ''
       registerForm.confirmPassword = ''
-      registerForm.verificationCode = ''
-      authSuccess.value = 'Email verified and account created. You can now log in.'
+      authSuccess.value =
+        'Account created. Open the Firebase verification link in your email before logging in.'
       authNeedsVerification.value = false
     } else {
       authError.value = result.error
@@ -472,13 +413,6 @@ async function completeRegistration() {
   } finally {
     authPendingAction.value = ''
   }
-}
-
-function cancelRegistrationVerification() {
-  registrationChallengeId.value = ''
-  registerForm.verificationCode = ''
-  authError.value = ''
-  authSuccess.value = ''
 }
 
 async function login() {
@@ -588,8 +522,6 @@ async function logout() {
   registerForm.email = ''
   registerForm.password = ''
   registerForm.confirmPassword = ''
-  registerForm.verificationCode = ''
-  registrationChallengeId.value = ''
 }
 
 async function saveResource(resourceId) {
@@ -899,13 +831,10 @@ onUnmounted(() => {
           :error="authError"
           :success="authSuccess"
           :verification-required="authNeedsVerification"
-          :registration-code-sent="Boolean(registrationChallengeId)"
           :pending-action="authPendingAction"
           @set-mode="switchAuthMode"
           @login="login"
-          @request-registration-code="requestRegistrationCode"
-          @complete-registration="completeRegistration"
-          @cancel-registration="cancelRegistrationVerification"
+          @register="register"
           @reset-password="requestPasswordReset"
           @resend-verification="resendVerification"
         />
