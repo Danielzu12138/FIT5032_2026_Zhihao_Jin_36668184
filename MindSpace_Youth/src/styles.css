@@ -954,6 +954,116 @@ textarea:disabled {
   margin-bottom: 0;
 }
 
+.admin-management-section {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.admin-action-list,
+.admin-resource-form,
+.admin-resource-list {
+  display: grid;
+  gap: 1rem;
+  padding: 1.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.admin-action-list h2,
+.admin-resource-form h2,
+.admin-resource-list h2 {
+  margin: 0.2rem 0 0;
+}
+
+.admin-action-list > p {
+  margin: -0.45rem 0 0;
+  color: var(--color-text-secondary);
+}
+
+.admin-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+  align-items: end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.admin-action-row strong,
+.admin-action-row span {
+  display: block;
+}
+
+.admin-action-row span {
+  margin-top: 0.15rem;
+  color: var(--color-text-secondary);
+  font-size: 0.88rem;
+}
+
+.admin-resource-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
+  gap: 1.5rem;
+}
+
+.admin-resource-form {
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+}
+
+.admin-resource-form > div:first-child,
+.admin-resource-form .full-width {
+  grid-column: 1 / -1;
+}
+
+.admin-resource-form label,
+.admin-action-row label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.admin-resource-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.admin-resource-item span {
+  color: var(--color-primary-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-resource-item h3 {
+  margin: 0.25rem 0;
+  font-size: 1rem;
+}
+
+.admin-resource-item p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.danger-button {
+  background: var(--color-error);
+}
+
+.danger-button:not(:disabled):hover {
+  background: #853529;
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
 @media (max-width: 600px) {
   main {
     width: min(calc(100% - 1rem), 1200px);
@@ -985,6 +1095,13 @@ textarea:disabled {
 
   .section-grid,
   .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-resource-layout,
+  .admin-resource-form,
+  .admin-action-row,
+  .admin-resource-item {
     grid-template-columns: 1fr;
   }
 

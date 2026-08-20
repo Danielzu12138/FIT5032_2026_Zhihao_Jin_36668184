@@ -32,14 +32,14 @@ defineEmits(['back', 'save'])
       </button>
     </header>
 
-    <figure class="resource-hero-figure">
+    <figure v-if="resource.image" class="resource-hero-figure">
       <img
         :src="resource.image"
         :alt="resource.imageAlt"
         width="1600"
         height="900"
       />
-      <figcaption>
+      <figcaption v-if="resource.imageCredit">
         Photo by
         <a :href="resource.imageCredit.url" target="_blank" rel="noopener noreferrer">
           {{ resource.imageCredit.name }}
@@ -49,7 +49,7 @@ defineEmits(['back', 'save'])
     </figure>
 
     <div class="resource-article-body">
-      <section class="resource-key-facts" aria-labelledby="key-facts-heading">
+      <section v-if="resource.keyFacts?.length" class="resource-key-facts" aria-labelledby="key-facts-heading">
         <p class="eyebrow">At a glance</p>
         <h2 id="key-facts-heading">Key facts</h2>
         <ul>
@@ -57,7 +57,7 @@ defineEmits(['back', 'save'])
         </ul>
       </section>
 
-      <aside class="resource-exercise" aria-labelledby="resource-exercise-heading">
+      <aside v-if="resource.exercise" class="resource-exercise" aria-labelledby="resource-exercise-heading">
         <p class="eyebrow">Practical exercise</p>
         <h2 id="resource-exercise-heading">{{ resource.exercise.title }}</h2>
         <p>{{ resource.exercise.intro }}</p>
@@ -84,7 +84,7 @@ defineEmits(['back', 'save'])
         </p>
       </aside>
 
-      <section class="resource-sources" aria-labelledby="resource-sources-heading">
+      <section v-if="resource.sources?.length" class="resource-sources" aria-labelledby="resource-sources-heading">
         <p class="eyebrow">Evidence and further support</p>
         <h2 id="resource-sources-heading">Further reading</h2>
         <p>

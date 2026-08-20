@@ -21,10 +21,15 @@ import {
   fetchAllBookings,
   fetchUserBookings,
   addBooking,
+  updateBookingStatus,
   fetchAllRatings,
   addRating,
   fetchSavedResourceIds,
   toggleSavedResource,
+  fetchManagedResources,
+  createManagedResource,
+  updateManagedResource,
+  deleteManagedResource,
 } from './utils/storage'
 import { isFutureDateTime, isValidEmail, sanitizeInput } from './utils/validation'
 import { encodeBase64, sendEmailWithAttachment, validateBookingOnServer } from './utils/api'
@@ -46,6 +51,7 @@ const state = reactive({
   users: [],
   bookings: [],
   ratings: [],
+  managedResources: [],
   savedResourceIds: [],
   loading: true,
 })
@@ -63,6 +69,9 @@ const bookingSubmitting = ref(false)
 const adminEmailError = ref('')
 const adminEmailSuccess = ref('')
 const adminEmailSending = ref(false)
+const managementError = ref('')
+const managementSuccess = ref('')
+const managementSubmitting = ref(false)
 const ratingError = ref('')
 const ratingSuccess = ref('')
 const resourceFilter = ref('All')
@@ -148,19 +157,24 @@ const visiblePages = computed(() => getVisiblePages(state.currentUser))
 
 const activePage = computed(() => pages.find((page) => page.id === state.page))
 const canViewCurrentPage = computed(() => canAccess(activePage.value, state.currentUser))
+const allResources = computed(() => [
+  ...resources,
+  ...state.managedResources.map(normalizeManagedResource),
+])
+
 const categories = computed(() => [
   'All',
-  ...new Set(resources.map((resource) => resource.category)),
+  ...new Set(allResources.value.map((resource) => resource.category)),
 ])
 
 const filteredResources = computed(() =>
   resourceFilter.value === 'All'
-    ? resources
-    : resources.filter((resource) => resource.category === resourceFilter.value),
+    ? allResources.value
+    : allResources.value.filter((resource) => resource.category === resourceFilter.value),
 )
 
 const selectedResource = computed(() =>
-  resources.find((resource) => resource.id === selectedResourceId.value),
+  allResources.value.find((resource) => resource.id === selectedResourceId.value),
 )
 
 const userBookings = computed(() =>
@@ -174,7 +188,7 @@ const averageRating = computed(() => {
 })
 
 const savedResources = computed(() =>
-  resources.filter((resource) => state.savedResourceIds.includes(resource.id)),
+  allResources.value.filter((resource) => state.savedResourceIds.includes(resource.id)),
 )
 
 const dashboardStats = reactive({
@@ -193,6 +207,7 @@ async function loadUserData(uid) {
     state.users = []
     state.bookings = []
     state.ratings = []
+    state.managedResources = []
     state.savedResourceIds = []
     return
   }
@@ -209,19 +224,48 @@ async function loadUserData(uid) {
     ? fetchAllBookings()
     : fetchUserBookings(uid)
 
-  const [bookingsResult, ratingsResult, savedResult] = await Promise.all([
+  const [bookingsResult, ratingsResult, savedResult, resourcesResult] = await Promise.all([
     bookingsRequest,
     fetchAllRatings(),
     fetchSavedResourceIds(uid),
+    fetchManagedResources(),
   ])
 
   if (bookingsResult.success) state.bookings = bookingsResult.bookings
   if (ratingsResult.success) state.ratings = ratingsResult.ratings
   if (savedResult.success) state.savedResourceIds = savedResult.ids
+  if (resourcesResult.success) state.managedResources = resourcesResult.resources
+}
+
+function normalizeManagedResource(resource) {
+  const image = String(resource.image || '').trim()
+  const imageAlt = String(resource.imageAlt || resource.title || 'Mental health resource illustration').trim()
+  const summary = String(resource.summary || '').trim()
+  return {
+    ...resource,
+    category: String(resource.category || 'Wellbeing'),
+    time: String(resource.time || '5 min read'),
+    summary,
+    image,
+    imageAlt,
+    imageCredit: null,
+    keyFacts: summary ? [summary] : [],
+    exercise: {
+      title: 'Choose one next step',
+      intro: 'Use this resource as a starting point and choose a small action that feels manageable today.',
+      steps: ['Read the guide slowly.', 'Write down one useful idea.', 'Contact a trusted support service if you need more help.'],
+    },
+    sections: [{
+      title: 'About this resource',
+      paragraphs: [summary || 'This resource was published by the MindSpace Youth administration team.'],
+    }],
+    sources: [],
+  }
 }
 
 async function loadApp() {
   state.loading = true
+  const publicResourcesRequest = fetchManagedResources()
 
   // Safety timeout: show page after 2 seconds even if Firebase hangs
   const safetyTimer = setTimeout(() => {
@@ -262,6 +306,7 @@ async function loadApp() {
       state.users = []
       state.bookings = []
       state.ratings = []
+      state.managedResources = []
       state.savedResourceIds = []
       // Clear forms on logout
       loginForm.email = ''
@@ -275,6 +320,8 @@ async function loadApp() {
       authError.value = ''
       authSuccess.value = ''
     }
+    const resourcesResult = await publicResourcesRequest
+    if (resourcesResult.success) state.managedResources = resourcesResult.resources
     state.loading = false
   })
 }
@@ -287,6 +334,8 @@ function clearAllForms() {
   bookingSuccess.value = ''
   adminEmailError.value = ''
   adminEmailSuccess.value = ''
+  managementError.value = ''
+  managementSuccess.value = ''
   ratingError.value = ''
   ratingSuccess.value = ''
   resourceFilter.value = 'All'
@@ -335,13 +384,15 @@ function switchAuthMode(mode) {
 }
 
 async function refreshAdminData() {
-  const [bookingsResult, usersResult, ratingsResult] = await Promise.all([
+  const [bookingsResult, usersResult, ratingsResult, resourcesResult] = await Promise.all([
     fetchAllBookings(),
     fetchAllUsers(),
     fetchAllRatings(),
+    fetchManagedResources(),
   ])
   if (bookingsResult.success) state.bookings = bookingsResult.bookings
   if (ratingsResult.success) state.ratings = ratingsResult.ratings
+  if (resourcesResult.success) state.managedResources = resourcesResult.resources
   if (usersResult.success) {
     state.users = usersResult.users
     dashboardStats.totalUsers = usersResult.users.length
@@ -507,6 +558,7 @@ async function logout() {
   state.page = 'home'
   state.bookings = []
   state.ratings = []
+  state.managedResources = []
   state.savedResourceIds = []
   // Clear auth messages
   authError.value = ''
@@ -543,11 +595,94 @@ async function saveResource(resourceId) {
 }
 
 function openResource(resourceId) {
-  if (!resources.some((resource) => resource.id === resourceId)) return
+  if (!allResources.value.some((resource) => resource.id === resourceId)) return
   resourceReturnPage.value = state.page === 'dashboard' ? 'dashboard' : 'resources'
   selectedResourceId.value = resourceId
   state.page = 'resource-detail'
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }))
+}
+
+async function handleBookingStatusUpdate({ id, status }) {
+  if (!isAdmin.value || managementSubmitting.value) return
+  managementError.value = ''
+  managementSuccess.value = ''
+  managementSubmitting.value = true
+  try {
+    const result = await updateBookingStatus(id, status)
+    if (!result.success) {
+      managementError.value = result.error
+      return
+    }
+    managementSuccess.value = status === 'Cancelled'
+      ? 'Booking cancelled and the appointment time is available again.'
+      : `Booking status changed to ${status}.`
+    await refreshAdminData()
+  } finally {
+    managementSubmitting.value = false
+  }
+}
+
+function prepareManagedResource(resource) {
+  const title = sanitizeInput(resource.title, 100)
+  const category = sanitizeInput(resource.category, 40)
+  const time = sanitizeInput(resource.time, 30)
+  const summary = sanitizeInput(resource.summary, 280)
+  const image = String(resource.image || '').trim()
+  const imageAlt = sanitizeInput(resource.imageAlt, 180)
+
+  if (!title || !category || !time || !summary) {
+    return { error: 'Title, category, reading time and summary are required.' }
+  }
+  if (image && (!image.startsWith('https://') || /\s/.test(image))) {
+    return { error: 'Image URL must start with https:// or be left empty.' }
+  }
+  return { resource: { title, category, time, summary, image, imageAlt } }
+}
+
+async function handleManagedResourceSave({ id, resource, done }) {
+  if (!isAdmin.value || managementSubmitting.value) return
+  managementError.value = ''
+  managementSuccess.value = ''
+  const prepared = prepareManagedResource(resource)
+  if (prepared.error) {
+    managementError.value = prepared.error
+    return
+  }
+
+  managementSubmitting.value = true
+  try {
+    const result = id
+      ? await updateManagedResource(id, prepared.resource)
+      : await createManagedResource(prepared.resource)
+    if (!result.success) {
+      managementError.value = result.error
+      return
+    }
+    managementSuccess.value = id ? 'Resource updated.' : 'Resource published.'
+    done()
+    await refreshAdminData()
+  } finally {
+    managementSubmitting.value = false
+  }
+}
+
+async function handleManagedResourceDelete(resourceId) {
+  if (!isAdmin.value || managementSubmitting.value) return
+  managementError.value = ''
+  managementSuccess.value = ''
+  managementSubmitting.value = true
+  try {
+    const result = await deleteManagedResource(resourceId)
+    if (!result.success) {
+      managementError.value = result.error
+      return
+    }
+    state.savedResourceIds = state.savedResourceIds.filter((id) => id !== resourceId)
+    managementSuccess.value = 'Resource deleted.'
+    await refreshAdminData()
+  } finally {
+    managementSubmitting.value = false
+  }
 }
 
 function closeResource() {
@@ -862,11 +997,18 @@ onUnmounted(() => {
           :bookings="state.bookings"
           :users="state.users"
           :ratings="state.ratings"
+          :managed-resources="state.managedResources"
           :email-error="adminEmailError"
           :email-success="adminEmailSuccess"
           :email-sending="adminEmailSending"
+          :management-error="managementError"
+          :management-success="managementSuccess"
+          :management-submitting="managementSubmitting"
           @export-data="exportAdminData"
           @email-summary="emailAdminSummary"
+          @update-booking-status="handleBookingStatusUpdate"
+          @save-resource="handleManagedResourceSave"
+          @delete-resource="handleManagedResourceDelete"
         />
       </main>
 

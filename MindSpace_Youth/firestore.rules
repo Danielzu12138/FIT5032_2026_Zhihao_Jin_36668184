@@ -43,6 +43,11 @@ service cloud.firestore {
         value == '17:00' || value == '17:30';
     }
 
+    function validBookingStatus(value) {
+      return value == 'Pending' || value == 'Confirmed' ||
+        value == 'Completed' || value == 'Cancelled';
+    }
+
     function slotHasMatchingBooking(slotId, bookingId, supportService, date, time) {
       return existsAfter(
           /databases/$(database)/documents/bookings/$(bookingId)
@@ -127,7 +132,15 @@ service cloud.firestore {
       allow read: if isAdmin() ||
         (signedIn() && resource.data.uid == request.auth.uid);
 
-      allow update, delete: if isAdmin();
+      // An administrator can manage the operational status, but cannot alter
+      // the owner, service, time or slot ID after it was created.
+      allow update: if isAdmin() &&
+        validBookingStatus(request.resource.data.status) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'updatedAt'
+        ]);
+      allow delete: if isAdmin();
     }
 
     // Each date/time has one deterministic lock document. The lock and its
@@ -154,6 +167,13 @@ service cloud.firestore {
         );
 
       allow update, delete: if isAdmin();
+    }
+
+    // Public resources can be viewed by everyone. Only an authorised
+    // administrator may publish, edit or remove resource records.
+    match /resources/{resourceId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     match /ratings/{ratingId} {

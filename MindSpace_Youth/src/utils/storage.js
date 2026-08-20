@@ -5,6 +5,7 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
+  setDoc,
   query,
   where,
   runTransaction,
@@ -16,6 +17,7 @@ export const COLLECTIONS = {
   bookingSlots: 'booking_slots',
   ratings: 'ratings',
   savedResources: 'saved_resources',
+  resources: 'resources',
 }
 
 // ---- Bookings ---- //
@@ -82,6 +84,104 @@ export async function addBooking(booking) {
       }
     }
     return { success: false, error: 'Failed to create booking.' }
+  }
+}
+
+/**
+ * Administrators can update the operational state of a booking. Cancelling a
+ * booking also deletes its matching slot lock in the same transaction, so the
+ * time becomes available again without leaving stale reservation data behind.
+ */
+export async function updateBookingStatus(bookingId, status) {
+  const allowedStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled']
+  if (!allowedStatuses.includes(status)) {
+    return { success: false, error: 'Please select a valid booking status.' }
+  }
+
+  try {
+    const bookingRef = doc(db, COLLECTIONS.bookings, bookingId)
+    await runTransaction(db, async (transaction) => {
+      const bookingSnapshot = await transaction.get(bookingRef)
+      if (!bookingSnapshot.exists()) {
+        const missingError = new Error('Booking not found.')
+        missingError.code = 'booking/not-found'
+        throw missingError
+      }
+
+      const booking = bookingSnapshot.data()
+      const slotRef = booking.slotId
+        ? doc(db, COLLECTIONS.bookingSlots, booking.slotId)
+        : null
+      const slotSnapshot = slotRef ? await transaction.get(slotRef) : null
+
+      transaction.update(bookingRef, {
+        status,
+        updatedAt: new Date().toISOString(),
+      })
+
+      if (status === 'Cancelled' && slotRef && slotSnapshot) {
+        if (slotSnapshot.exists() && slotSnapshot.data().bookingId === bookingId) {
+          transaction.delete(slotRef)
+        }
+      }
+    })
+    return { success: true }
+  } catch (error) {
+    if (error?.code === 'booking/not-found') {
+      return { success: false, error: 'This booking no longer exists.' }
+    }
+    return { success: false, error: 'Failed to update the booking status.' }
+  }
+}
+
+// ---- Admin-managed resources ---- //
+
+export async function fetchManagedResources() {
+  try {
+    const snapshot = await getDocs(collection(db, COLLECTIONS.resources))
+    const resources = []
+    snapshot.forEach((docSnap) => resources.push({ id: docSnap.id, ...docSnap.data() }))
+    return { success: true, resources }
+  } catch {
+    return { success: false, resources: [], error: 'Failed to load managed resources.' }
+  }
+}
+
+export async function createManagedResource(resource) {
+  try {
+    const docRef = await addDoc(collection(db, COLLECTIONS.resources), {
+      ...resource,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    return { success: true, id: docRef.id }
+  } catch {
+    return { success: false, error: 'Failed to publish the resource.' }
+  }
+}
+
+export async function updateManagedResource(resourceId, resource) {
+  try {
+    await setDoc(
+      doc(db, COLLECTIONS.resources, resourceId),
+      {
+        ...resource,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true },
+    )
+    return { success: true }
+  } catch {
+    return { success: false, error: 'Failed to update the resource.' }
+  }
+}
+
+export async function deleteManagedResource(resourceId) {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.resources, resourceId))
+    return { success: true }
+  } catch {
+    return { success: false, error: 'Failed to delete the resource.' }
   }
 }
 
